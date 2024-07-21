@@ -2,7 +2,7 @@
   "profiles": {
     "DataReader": {
       "commandName": "Project",
-      "commandLineArgs": "-i Y:\\GitHub\\SSISDeploy\\dtsx_data_sync.dtsx",
+      "commandLineArgs": "-p Y:\\GitHub\\SSISDeploy\\  -s -v",
       "sqlDebugging": true
     }
   }

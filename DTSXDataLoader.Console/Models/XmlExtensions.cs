@@ -74,7 +74,7 @@ namespace DTSXDataLoader.Models
             {
                 str = $@"{node.Name}";
             }
-            if (n.MoveToParent() == false)
+            if (!n.MoveToParent())
             {
 
                 return $@"ROOT";

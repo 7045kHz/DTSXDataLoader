@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,7 +9,7 @@ using System.Threading.Tasks;
 using System.Xml;
 using System.Xml.XPath;
 
-namespace DTSXDataLoaderCore.Service
+namespace DTSXDataLoader.Core.Service
 {
     public class FileService
     {
@@ -31,5 +32,6 @@ namespace DTSXDataLoaderCore.Service
             return root = doc.DocumentElement;
 
         }
+ 
     }
 }

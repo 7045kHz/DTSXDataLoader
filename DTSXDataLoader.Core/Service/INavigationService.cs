@@ -1,12 +1,16 @@
 ﻿using System.Xml;
 using System.Xml.XPath;
 
-namespace DTSXDataLoaderCore.Service
+namespace DTSXDataLoader.Core.Service
 {
     public interface INavigationService
     {
         public XmlDocument NewXmlDocument(string FileName);
         public XPathNavigator CreateNavigator(XmlDocument doc);
         public XmlNamespaceManager CreateNameSpaceManager(XmlNameTable NameTable);
+        public string GetPath(XPathNavigator node);
+        public string GetPath(XPathNavigator node, string label);
+        public string NewGUID(XPathNavigator node);
+        public string NewGUID(XPathNavigator node, string label);
     }
 }

@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using System.Xml.XPath;
 using System.Xml;
 
-namespace DTSXDataLoaderCore.Models
+namespace DTSXDataLoader.Core.Models
 {
     public class XConfig : IXConfig
     {

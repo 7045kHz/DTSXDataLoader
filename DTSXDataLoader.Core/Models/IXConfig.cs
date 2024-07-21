@@ -1,7 +1,7 @@
 ﻿using System.Xml;
 using System.Xml.XPath;
 
-namespace DTSXDataLoaderCore.Models
+namespace DTSXDataLoader.Core.Models
 {
     public interface IXConfig
     {

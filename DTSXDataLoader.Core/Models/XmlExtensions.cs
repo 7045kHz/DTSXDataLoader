@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Xml;
 using System.Xml.XPath;
-namespace DTSXDataLoaderCore.Models
+namespace DTSXDataLoader.Core.Models
 {
     static class XmlExtensions
     {

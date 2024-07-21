@@ -5,20 +5,19 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace DTSXDataLoaderCore.Models
+namespace DTSXDataLoader.Models
 {
     public class Options : IOptions
     {
         [Option('v', "verbose", Required = false, HelpText = "Set output to verbose messages.")]
-        public bool IsVerbose { get; set; }
+        public bool IsVerbose { get; set; } = false;
 
-        [Option('i', "ifile", Required = false, HelpText = "Path to individual package")]
-        public string? File { get; set; }
+        [Option('p', "path", Required = false, HelpText = "Path to individual package")]
+        public string? Path { get; set; }
 
         [Option('s', "sql", Required = false, HelpText = "SQL")]
-        public bool IsSql { get; set; }
-        [Option('d', "InputDirectory", Required = false, HelpText = "Package Directory")]
-        public string? InputDirectory { get; set; }
+        public bool IsSql { get; set; } = false;
+
 
         [Option('o', "Output", Required = false, HelpText = "Output Directory")]
         public string? OutputDirectory { get; set; }

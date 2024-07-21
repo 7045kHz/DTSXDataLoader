@@ -1,21 +1,9 @@
-﻿using System.Reflection.PortableExecutable;
-using System.Xml.XPath;
-using System.Xml;
-using DTSXDataLoaderCore.Models;
-using DTSXDataLoader.Service;
-using System.Diagnostics;
-using System.Xml.Linq;
-using System.Collections.Generic;
-using System.Reflection.Metadata.Ecma335;
+﻿using System.Xml.XPath;
+using DTSXDataLoader.Core.Models;
 using System.Text;
-using System.Runtime.InteropServices;
-using System.Runtime.CompilerServices;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Console;
 using Microsoft.Extensions.Configuration;
-using System;
-using CommandLine;
+using DTSXDataLoader.Core.Service;
 
 namespace DTSXDataLoader.Service
 {
@@ -24,11 +12,13 @@ namespace DTSXDataLoader.Service
 
         private readonly IConfiguration _configuration;
         private readonly ILogger _logger;
+        private readonly INavigationService _navigationService;
 
-        public DocumentProcessingService(IConfiguration configuration, ILogger logger)
+        public DocumentProcessingService(IConfiguration configuration, ILogger logger, INavigationService navigationService)
         {
             _configuration = configuration;
             _logger = logger;
+            _navigationService = navigationService;
         }
 
         public DtsVariable GetVariable(XPathNavigator node, XConfig config)
@@ -42,52 +32,59 @@ namespace DTSXDataLoader.Service
                 XPathNavigator? NodeFirstClone = node.Clone();
                 XPathNavigator? NodeParentClone = node.Clone();
                 XPathNavigator? NodeVariableValueClone = node.Clone();
-                NodeParentClone.MoveToParent();
-                //                cloneC.MoveToChild("VariableValue", config.NameSpaceURI);
-                NodeVariableValueClone.MoveToChild("VariableValue", NodeFirstClone.NamespaceURI);
-
-                variable.ParentNodeType = NodeParentClone.NodeType.ToString();
-                variable.ParentRefId = NodeParentClone.GetAttribute("refId", NodeParentClone.NamespaceURI)?.ToString();
-                variable.ParentNodeDtsId = NodeParentClone.GetAttribute("DTSID", NodeParentClone.NamespaceURI);
-                variable.GUID = XmlExtensions.NewGUID(NodeFirstClone); 
-                variable.ParentGUID = XmlExtensions.NewGUID(NodeParentClone);
-                variable.ParentNodeName = (string)NodeParentClone.Name;
-                variable.Filename = config.FileName;
-                variable.Package = config.PackageName();
-                variable.VariableValue = NodeVariableValueClone.Value;
-                variable.XPath = XmlExtensions.GetPath(NodeFirstClone);
-                variable.Description = NodeFirstClone.GetAttribute("Description", NodeFirstClone.NamespaceURI)?.ToString();
-                variable.CreationName = NodeFirstClone.GetAttribute("CreationName", NodeFirstClone.NamespaceURI)?.ToString();
-                variable.VariableDataType = NodeVariableValueClone?.GetAttribute("DataType", NodeVariableValueClone.NamespaceURI);
-
-                if (vAttributes.Any())
+                if (NodeFirstClone != null && NodeParentClone != null )
                 {
 
-                    foreach (DtsAttribute attr in vAttributes)
-                    {
-                        switch (attr.AttributeName)
-                        {
-                            case "DTS:ObjectName":
-                                variable.VariableName = (string?)attr.AttributeValue;
-                                break;
-                            case "DTS:Namespace":
-                                variable.VariableNameSpace = (string?)attr.AttributeValue;
-                                break;
-                            case "DTS:DTSID":
-                                variable.VariableDtsxId = (string?)attr.AttributeValue;
-                                break;
-                            case "DTS:IncludeInDebugDump":
-                                variable.IncludeInDebugDump = (string?)attr.AttributeValue;
-                                break;
-                            case "DTS:Expression":
-                                variable.VariableExpression = (string?)attr.AttributeValue;
-                                break;
-                            case "DTS:EvaluateAsExpression":
-                                variable.EvaluateAsExpression = (string?)attr.AttributeValue;
-                                break;
-                        }
-                    }
+                    NodeParentClone.MoveToParent();
+                    NodeVariableValueClone.MoveToChild("VariableValue", NodeFirstClone.NamespaceURI);
 
+                    variable.ParentNodeType = NodeParentClone.NodeType.ToString();
+                    variable.ParentRefId = NodeParentClone.GetAttribute("refId", NodeParentClone.NamespaceURI)?.ToString();
+                    variable.ParentNodeDtsId = NodeParentClone.GetAttribute("DTSID", NodeParentClone.NamespaceURI);
+                    variable.GUID = _navigationService.NewGUID(NodeFirstClone);
+                    variable.ParentGUID = _navigationService.NewGUID(NodeParentClone);
+                    variable.ParentNodeName = NodeParentClone.Name;
+                    variable.Filename = config.FileName;
+                    variable.Package = config.PackageName();
+                    variable.VariableValue = NodeVariableValueClone.Value;
+                    variable.XPath = _navigationService.GetPath(NodeFirstClone);
+                    variable.Description = NodeFirstClone.GetAttribute("Description", NodeFirstClone.NamespaceURI)?.ToString();
+                    variable.CreationName = NodeFirstClone.GetAttribute("CreationName", NodeFirstClone.NamespaceURI)?.ToString();
+
+                    variable.VariableDataType = NodeVariableValueClone.GetAttribute("DataType", NodeVariableValueClone.NamespaceURI);
+
+                    if (vAttributes.Any())
+                    {
+
+                        foreach (DtsAttribute attr in vAttributes)
+                        {
+                            if (!string.IsNullOrEmpty(attr.AttributeName))
+                            {
+                                switch (attr.AttributeName)
+                                {
+                                    case "DTS:ObjectName":
+                                        variable.VariableName = attr.AttributeValue;
+                                        break;
+                                    case "DTS:Namespace":
+                                        variable.VariableNameSpace = attr.AttributeValue;
+                                        break;
+                                    case "DTS:DTSID":
+                                        variable.VariableDtsxId = attr.AttributeValue;
+                                        break;
+                                    case "DTS:IncludeInDebugDump":
+                                        variable.IncludeInDebugDump = attr.AttributeValue;
+                                        break;
+                                    case "DTS:Expression":
+                                        variable.VariableExpression = attr.AttributeValue;
+                                        break;
+                                    case "DTS:EvaluateAsExpression":
+                                        variable.EvaluateAsExpression = attr.AttributeValue;
+                                        break;
+                                }
+                            }
+                        }
+
+                    }
                 }
                 return variable;
             }
@@ -111,7 +108,6 @@ namespace DTSXDataLoader.Service
                     {
                         if (n != null)
                         {
-                            var cloneVariableValue = n.Clone();
 
                             var cloneN = n.Clone();
 
@@ -159,7 +155,7 @@ namespace DTSXDataLoader.Service
 
 
 
-                            element.XPath = XmlExtensions.GetPath(cloneX).ToString();
+                            element.XPath = _navigationService.GetPath(cloneX).ToString();
                             element.DtsId = FirstNodeClone.GetAttribute("DTSID", FirstNodeClone.NamespaceURI).ToString();
                             element.Description = FirstNodeClone.GetAttribute("Description", FirstNodeClone.NamespaceURI).ToString();
                             element.CreationName = FirstNodeClone.GetAttribute("CreationName", FirstNodeClone.NamespaceURI).ToString();
@@ -197,82 +193,83 @@ namespace DTSXDataLoader.Service
             try
             {
                 List<DtsElement>? elementList = new List<DtsElement>();
-                int index = 0;
 
-                var childrenClone = config?.Children?.Clone();
                 var TchildrenClone = config?.Children?.Clone();
-
-                while (TchildrenClone.MoveNext())
+                if (TchildrenClone != null)
                 {
 
-                    XPathNavigator n = TchildrenClone.Current;
-                    if (n != null)
+                    while (TchildrenClone.MoveNext())
                     {
-                        var FirstNodeClone = n.Clone();
-                        var ParentNodeClone = n.Clone();
 
-                        // @$"DTS:VariableValue"
-                        ParentNodeClone.MoveToParent(); // Becomes NodeType = Root, no name
-                        DtsElement element = new DtsElement();
-                        var cloneX = FirstNodeClone.Clone();
-                        var parentNodeTypeIs = Convert.ToString(ParentNodeClone.NodeType);
-                        var currentNodeTypeIs = Convert.ToString(FirstNodeClone.NodeType);
-
-                        if (!string.IsNullOrEmpty(parentNodeTypeIs) && !string.IsNullOrEmpty(currentNodeTypeIs))
+                        XPathNavigator n = TchildrenClone.Current;
+                        if (n != null)
                         {
-                            element.GUID = XmlExtensions.NewGUID(FirstNodeClone);
-                            element.XPath = XmlExtensions.GetPath(cloneX).ToString();
-                            element.DtsId = FirstNodeClone.GetAttribute("DTSID", FirstNodeClone.NamespaceURI).ToString();
-                            element.Description = FirstNodeClone.GetAttribute("Description", FirstNodeClone.NamespaceURI).ToString();
-                            element.CreationName = FirstNodeClone.GetAttribute("CreationName", FirstNodeClone.NamespaceURI).ToString();
-                            element.Name = FirstNodeClone.Name;
-                            element.NodeType = Convert.ToString(FirstNodeClone.NodeType);
-                            element.Filename = config?.FileName.ToString();
-                            element.Package = config?.PackageName();
+                            var FirstNodeClone = n.Clone();
+                            var ParentNodeClone = n.Clone();
 
-                            if (FirstNodeClone.Name == "SQLTask:SqlTaskData")
+                            // @$"DTS:VariableValue"
+                            ParentNodeClone.MoveToParent(); // Becomes NodeType = Root, no name
+                            DtsElement element = new DtsElement();
+                            var cloneX = FirstNodeClone.Clone();
+                            var parentNodeTypeIs = Convert.ToString(ParentNodeClone.NodeType);
+                            var currentNodeTypeIs = Convert.ToString(FirstNodeClone.NodeType);
+
+                            if (!string.IsNullOrEmpty(parentNodeTypeIs) && !string.IsNullOrEmpty(currentNodeTypeIs))
                             {
+                                element.GUID = _navigationService.NewGUID(FirstNodeClone);
+                                element.XPath = _navigationService.GetPath(cloneX).ToString();
+                                element.DtsId = FirstNodeClone.GetAttribute("DTSID", FirstNodeClone.NamespaceURI).ToString();
+                                element.Description = FirstNodeClone.GetAttribute("Description", FirstNodeClone.NamespaceURI).ToString();
+                                element.CreationName = FirstNodeClone.GetAttribute("CreationName", FirstNodeClone.NamespaceURI).ToString();
+                                element.Name = FirstNodeClone.Name;
+                                element.NodeType = Convert.ToString(FirstNodeClone.NodeType);
+                                element.Filename = config?.FileName.ToString();
+                                element.Package = config?.PackageName();
 
-                                var t = FirstNodeClone.GetAttribute("SqlStatementSource", FirstNodeClone.NamespaceURI)?.ToString();
-                                var c = FirstNodeClone.GetAttribute("SQLTask:Connection", FirstNodeClone.NamespaceURI)?.ToString();
-                                element.Value = (string)$@"[{c}] {t}";
+                                if (FirstNodeClone.Name == "SQLTask:SqlTaskData")
+                                {
+
+                                    var t = FirstNodeClone.GetAttribute("SqlStatementSource", FirstNodeClone.NamespaceURI)?.ToString();
+                                    var c = FirstNodeClone.GetAttribute("SQLTask:Connection", FirstNodeClone.NamespaceURI)?.ToString();
+                                    element.Value = $@"[{c}] {t}";
+                                }
+                                else
+                                {
+                                    element.Value = FirstNodeClone.Value;
+                                }
+
+
+                                if (currentNodeTypeIs.Equals("Root"))
+                                {
+                                    element.ParentGUID = element.GUID;
+                                    element.ParentRefId = FirstNodeClone.GetAttribute("refId", FirstNodeClone.NamespaceURI)?.ToString();
+                                    element.ParentNodeDtsId = FirstNodeClone.GetAttribute("DTSID", FirstNodeClone.NamespaceURI);
+                                    element.ParentNodeType = Convert.ToString(FirstNodeClone.NodeType);
+                                    element.ParentNodeName = Convert.ToString(FirstNodeClone.Name);
+
+                                }
+                                else
+                                {
+                                    element.ParentGUID = _navigationService.NewGUID(ParentNodeClone);
+                                    element.ParentRefId = ParentNodeClone.GetAttribute("refId", ParentNodeClone.NamespaceURI)?.ToString();
+                                    element.ParentNodeDtsId = ParentNodeClone.GetAttribute("DTSID", ParentNodeClone.NamespaceURI);
+                                    element.ParentNodeType = Convert.ToString(ParentNodeClone.NodeType);
+                                    element.ParentNodeName = Convert.ToString(ParentNodeClone.Name);
+
+                                }
+
+
                             }
-                            else
-                            {
-                                element.Value = FirstNodeClone.Value;
-                            }
 
 
-                            if (currentNodeTypeIs.Equals("Root"))
-                            {
-                                element.ParentGUID = element.GUID;
-                                element.ParentRefId = FirstNodeClone.GetAttribute("refId", FirstNodeClone.NamespaceURI)?.ToString();
-                                element.ParentNodeDtsId = FirstNodeClone.GetAttribute("DTSID", FirstNodeClone.NamespaceURI);
-                                element.ParentNodeType = Convert.ToString(FirstNodeClone.NodeType);
-                                element.ParentNodeName = Convert.ToString(FirstNodeClone.Name);
-
-                            }
-                            else
-                            {
-                                element.ParentGUID = XmlExtensions.NewGUID(ParentNodeClone);
-                                element.ParentRefId = ParentNodeClone.GetAttribute("refId", ParentNodeClone.NamespaceURI)?.ToString();
-                                element.ParentNodeDtsId = ParentNodeClone.GetAttribute("DTSID", ParentNodeClone.NamespaceURI);
-                                element.ParentNodeType = Convert.ToString(ParentNodeClone.NodeType);
-                                element.ParentNodeName = Convert.ToString(ParentNodeClone.Name);
-
-                            }
-
-
+                            var vAttributes = GetAttributes(FirstNodeClone, element);
+                            element.Attributes = vAttributes;
+                            elementList.Add(element);
                         }
-
-
-                        var vAttributes = GetAttributes(FirstNodeClone, element);
-                        element.Attributes = vAttributes;
-                        elementList.Add(element);
                     }
+
                 }
-              
-                return elementList;
+                    return elementList;
             }
             catch (Exception e)
             {
@@ -287,12 +284,12 @@ namespace DTSXDataLoader.Service
             List<DtsAttribute> attributesList = new List<DtsAttribute>();
             try
             {
-                if (elements != null && elements.Count() > 0)
+                if (elements != null && elements.Count > 0)
                 {
                     foreach (DtsElement element in elements)
                     {
                         List<DtsAttribute> attributes = element.Attributes;
-                        if (attributes?.Count() > 0)
+                        if (attributes?.Count > 0)
                         {
                             attributesList.AddRange(attributes);
                         }
@@ -317,7 +314,6 @@ namespace DTSXDataLoader.Service
                 XPathNavigator? NodeElementPathClone = node.Clone();
                 List<DtsAttribute> attributes = new List<DtsAttribute>();
                 XPathNavigator? NodeParentClone = node.Clone();
-                string nodeRefId = null;
 
                 var eventCloneCount = NodeFirstClone.Evaluate("count(@*)");
                 if (element != null)
@@ -345,17 +341,17 @@ namespace DTSXDataLoader.Service
                             Filename = element.Filename,
                             Package = element.Package,
                             ParentRefId = element.ParentRefId,
-                            ParentGUID = XmlExtensions.NewGUID(NodeElementPathClone),
+                            ParentGUID = _navigationService.NewGUID(NodeElementPathClone),
                             ParentNodeType = element.ParentNodeType,
                             ParentNodeName = element.ParentNodeName,
                             ParentNodeDtsId = element.ParentNodeDtsId,
-                            XPath = XmlExtensions.GetPath(NodeFirstClone),
+                            XPath = _navigationService.GetPath(NodeFirstClone),
                             RefId = element.RefId,
                             AttributeName = NodeFirstClone.Name,
                             AttributeValue = NodeFirstClone.Value,
                             AttributeType = Convert.ToString(NodeFirstClone.ValueType),
-                            GUID = XmlExtensions.NewGUID(NodeFirstClone),
-                            ElementXPath = XmlExtensions.GetPath(NodeElementPathClone)?.ToString()
+                            GUID = _navigationService.NewGUID(NodeFirstClone),
+                            ElementXPath = _navigationService.GetPath(NodeElementPathClone)?.ToString()
                         };
                         attributes.Add(attribute);
                     }
@@ -372,17 +368,17 @@ namespace DTSXDataLoader.Service
                                 Filename = element.Filename,
                                 Package = element.Package,
                                 ParentRefId = element.ParentRefId,
-                                ParentGUID = XmlExtensions.NewGUID(NodeElementPathClone),
+                                ParentGUID = _navigationService.NewGUID(NodeElementPathClone),
                                 ParentNodeType = element.ParentNodeType,
                                 ParentNodeName = element.ParentNodeName,
                                 ParentNodeDtsId = element.ParentNodeDtsId,
-                                XPath = XmlExtensions.GetPath(NodeFirstClone),
+                                XPath = _navigationService.GetPath(NodeFirstClone),
                                 RefId = element.RefId,
                                 AttributeName = NodeFirstClone.Name,
                                 AttributeValue = NodeFirstClone.Value,
                                 AttributeType = Convert.ToString(NodeFirstClone.ValueType),
-                                GUID = XmlExtensions.NewGUID(NodeFirstClone),
-                                ElementXPath = XmlExtensions.GetPath(NodeElementPathClone)?.ToString()
+                                GUID = _navigationService.NewGUID(NodeFirstClone),
+                                ElementXPath = _navigationService.GetPath(NodeElementPathClone)?.ToString()
                             };
                             attributes.Add(attribute);
                         }
@@ -411,12 +407,9 @@ namespace DTSXDataLoader.Service
                 XPathNavigator? NodeElementPathClone = node.Clone();
 
                 List<DtsAttribute> attributes = new List<DtsAttribute>();
-                var nodeRefId = node?.GetAttribute("refId", node.NamespaceURI);
-                var nodeName = node?.Name;
-                var nodeType = node?.NodeType;
+                var nodeRefId = node.GetAttribute("refId", node.NamespaceURI);
 
                 NodeParentClone.MoveToParent();
-                XPathNavigator? eventClone = node.Clone();
                 var eventCloneCount = NodeFirstClone.Evaluate("count(@*)");
                 NodeFirstClone.MoveToFirstAttribute();
 
@@ -428,15 +421,15 @@ namespace DTSXDataLoader.Service
                         Filename = config.FileName.ToString(),
                         Package = config.PackageName(),
                         ParentRefId = NodeParentClone.GetAttribute("refId", NodeParentClone.NamespaceURI),
-                        GUID = XmlExtensions.NewGUID(NodeFirstClone),
-                        ParentGUID = XmlExtensions.NewGUID(NodeParentClone),
+                        GUID = _navigationService.NewGUID(NodeFirstClone),
+                        ParentGUID = _navigationService.NewGUID(NodeParentClone),
                         ParentNodeType = Convert.ToString(NodeParentClone.NodeType),
-                        XPath = XmlExtensions.GetPath(NodeFirstClone),
+                        XPath = _navigationService.GetPath(NodeFirstClone),
                         RefId = nodeRefId,
                         AttributeName = NodeFirstClone.Name,
                         AttributeValue = NodeFirstClone.Value,
                         AttributeType = Convert.ToString(NodeFirstClone.ValueType),
-                        ElementXPath = XmlExtensions.GetPath(NodeElementPathClone)?.ToString()
+                        ElementXPath = _navigationService.GetPath(NodeElementPathClone)?.ToString()
                     };
                     attributes.Add(attribute);
                 }
@@ -451,10 +444,10 @@ namespace DTSXDataLoader.Service
                         {
                             ParentRefId = NodeParentClone.GetAttribute("refId", NodeParentClone.NamespaceURI),
                             ParentNodeName = NodeParentClone.Name,
-                            GUID = XmlExtensions.NewGUID(NodeFirstClone),
-                            ParentGUID = XmlExtensions.NewGUID(NodeParentClone),
+                            GUID = _navigationService.NewGUID(NodeFirstClone),
+                            ParentGUID = _navigationService.NewGUID(NodeParentClone),
                             ParentNodeType = Convert.ToString(NodeParentClone.NodeType),
-                            XPath = XmlExtensions.GetPath(NodeFirstClone),
+                            XPath = _navigationService.GetPath(NodeFirstClone),
                             RefId = nodeRefId,
                             AttributeName = NodeFirstClone.Name,
                             AttributeValue = Convert.ToString(NodeFirstClone.Value),

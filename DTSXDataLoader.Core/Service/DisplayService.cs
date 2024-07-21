@@ -1,4 +1,4 @@
-﻿using DTSXDataLoaderCore.Models;
+﻿using DTSXDataLoader.Core.Models;
 using DTSXDataLoader.Service;
 using System;
 using System.Collections.Generic;
@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 using System.Xml.Linq;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-namespace DTSXDataLoaderCore.Service
+namespace DTSXDataLoader.Core.Service
 {
     public class DisplayService : IDisplayService
     {

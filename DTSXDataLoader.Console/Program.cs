@@ -1,28 +1,12 @@
-﻿using System.Reflection.PortableExecutable;
-using System.Xml.XPath;
+﻿using System.Xml.XPath;
 using System.Xml;
-using DTSXDataLoaderCore.Models;
+using DTSXDataLoader.Core.Models;
 using DTSXDataLoader.Service;
-using DTSXDataLoaderCore.Service;
-using System.Diagnostics;
-using System.Xml.Linq;
-using System.Collections.Generic;
-using System.Reflection.Metadata.Ecma335;
-using System.Text;
-using System.Runtime.InteropServices;
-using System.Runtime.CompilerServices;
+using DTSXDataLoader.Core.Service;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Console;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Configuration.Json;
-using Microsoft.Extensions.Configuration.CommandLine;
-using Microsoft.Extensions.Configuration.Binder;
-using Microsoft.Extensions.Configuration.EnvironmentVariables;
-using System;
-using System.IO;
-using CommandLine;
-using System.Formats.Tar;
+using DTSXDataLoader.Models;
 namespace DTSXDataLoader;
 
 public static class Program
@@ -52,10 +36,10 @@ public static class Program
         // Basic Setup
         ServiceProvider serviceProvider = new ServiceCollection()
             .AddLogging()
-          //  .AddSingleton<IDisplayService, DisplayService>()
+            //  .AddSingleton<IDisplayService, DisplayService>()
             .AddSingleton<IDocumentProcessingService, DocumentProcessingService>()
             .AddSingleton<ICommandLineService, CommandLineService>()
-            .AddSingleton<IDatabaseService, DatabaseService>()
+            .AddSingleton<IEtlDatabaseService, EtlDatabaseService>()
             .AddSingleton<INavigationService, NavigationService>()
             .AddScoped<IConfiguration>(_ => configuration)
             .AddScoped<ILogger>(_ => logger)
@@ -63,7 +47,7 @@ public static class Program
 
         var processingService = serviceProvider.GetService<IDocumentProcessingService>();
         var commandLineService = serviceProvider.GetService<ICommandLineService>();
-        var databaseService = serviceProvider.GetService<IDatabaseService>();
+        var databaseService = serviceProvider.GetService<IEtlDatabaseService>();
         var navigationService = serviceProvider.GetService<INavigationService>();
 
         // Setup Lists for output storage
@@ -72,6 +56,7 @@ public static class Program
         List<DtsElement>? elements = new List<DtsElement>();
         List<DtsVariable>? packageVariables = new List<DtsVariable>();
 
+        IEnumerable<string> fileList = new List<string>();
         string? FileName = null;
         string? nodeRefid = null;
         string? nodeName = null;
@@ -79,11 +64,33 @@ public static class Program
         bool? IsDbActive = false;
         List<string>? xpaths;
 
+        IOptions options = new Options();
+
+        try
+        {
+            if (commandLineService != null)
+            {
+                options = commandLineService.CheckCommandArguments(args);
+                FileName = options.Path;
+                logger.LogInformation(@$"Scanning: {FileName}");
+            }
+            else
+            {
+                logger.LogCritical($@"Error loading command lile options");
+            }
+
+        }
+        catch (Exception e)
+        {
+            logger.LogInformation($@"Error getting file for scanning = {e}");
+
+            throw;
+        }
         // Confirm access to DB
         try
         {
             IsDbActive = false;
-            IsDbActive = databaseService?.IsDbConnectionActive().Result;
+            IsDbActive = databaseService?.IsDbConnectionActiveAsync().Result;
 
             if (IsDbActive == true)
             {
@@ -99,87 +106,110 @@ public static class Program
             throw;
         }
 
-
-
-        try
-        {
-            FileName = configuration?.GetSection("Settings").GetValue<string>("DefaultPackageFile");
-            commandLineService?.CheckCommandArguments(args);
-
-            logger.LogInformation(@$"Scanning file: {FileName}");
-        }
-        catch (Exception e)
-        {
-            logger.LogInformation($@"Error getting file for scanning = {e}");
-
-            throw;
-        }
-
         try
         {
 
             // Define and load the XML Objects
-            if (string.IsNullOrEmpty(FileName) || !File.Exists(FileName) || navigationService == null || processingService == null || configuration == null)
+            if (commandLineService != null && databaseService != null && processingService != null && navigationService != null)
+            {
+                await databaseService.TruncateEtlTablesAllAsync();
+                fileList = commandLineService.GetArrayOfFiles(options);
+                foreach (var file in fileList)
+                {
+                    FileName = file;
+
+
+                    XmlDocument doc = navigationService.NewXmlDocument(FileName);
+                    XPathNavigator nav = navigationService.CreateNavigator(doc);
+                    XmlNamespaceManager nsmgr = navigationService.CreateNameSpaceManager(nav.NameTable);
+
+
+                    XConfig XmlConfig = new XConfig()
+                    {
+                        FileName = FileName,
+                        nsmgr = nsmgr,
+                        nodeRefid = nodeRefid,
+                        nodeName = nodeName,
+                    };
+                    logger.LogInformation(@$"Scanning file: {XmlConfig.FileName} Package {XmlConfig?.PackageName()}");
+
+                    if (packageAttributes != null && packageAttributes.Count >= 1)
+                    {
+                        nodeRefid = packageAttributes?.FirstOrDefault(a => a.ParentRefId == "Package")?.ParentRefId?.ToString();
+                        nodeName = packageAttributes?.FirstOrDefault(a => a.ParentNodeName == "DTS:Executable")?.ParentNodeName?.ToString();
+                    }
+
+
+                    // Collect all defined varibles in package
+
+
+                    xpath = "//DTS:Variables/child::*";
+                    if (XmlConfig != null)
+                    {
+                        var allChildren = nav.Select(xpath, nsmgr);
+                        XmlConfig.Children = allChildren;
+                        logger.LogInformation($@"Running GetVariables");
+                        packageVariables.AddRange(processingService.GetVariables(XmlConfig));
+                    }
+
+                    if (configuration != null && configuration.GetSection("ScanElements").GetChildren().Any())
+                    {
+                        xpaths = configuration.GetSection("ScanElements").Get<List<string>>();
+                        if (xpaths != null && xpaths.Count >= 1)
+                        {
+                            foreach (string x in xpaths)
+                            {
+                                if (XmlConfig != null)
+                                {
+
+                                    var allChildren = nav.Select(x, nsmgr);
+                                    XmlConfig.Children = allChildren;
+                                    logger.LogInformation($@"Running GetElements");
+                                    elements = processingService.GetElements(XmlConfig);
+                                    packageElements.AddRange(elements);
+                                }
+                            }
+                        }
+
+                    }
+
+
+                }
+                try
+                {
+                    logger.LogInformation($@"Getting Attribute List From Elements");
+                    var elementAttributes = processingService?.GetAttributeListFromElements(packageElements);
+                    if (elementAttributes != null)
+                    {
+                        packageAttributes?.AddRange(elementAttributes);
+                    }
+
+                    if ( packageAttributes != null && packageVariables != null && packageElements != null)
+                    {
+                        logger.LogInformation(@$"Saving data to database");
+                        await databaseService.SaveEtlToDatabaseAsync(packageElements,packageAttributes,packageVariables);
+                    }
+                    else
+                    {
+                        logger.LogError($@"Not all lists available to insert to database");
+                    }
+
+
+
+                }
+                catch (Exception e)
+                {
+                    logger.LogInformation($@"Display Error = {e}");
+                    throw;
+                }
+
+            }
+            else
             {
                 logger.LogCritical($@"File {FileName} Missing or empty selection");
                 Environment.Exit(-1);
             }
-            else
-            {
-                XmlDocument doc = navigationService.NewXmlDocument(FileName);
-                XPathNavigator nav = navigationService.CreateNavigator(doc);
-                XmlNamespaceManager nsmgr = navigationService.CreateNameSpaceManager(nav.NameTable);
 
-
-                XConfig XmlConfig = new XConfig()
-                {
-                    FileName = FileName,
-                    nsmgr = nsmgr,
-                    nodeRefid = nodeRefid,
-                    nodeName = nodeName,
-                };
-                logger.LogInformation(@$"Scanning file: {XmlConfig.FileName} Package {XmlConfig?.PackageName()}");
-
-                if (packageAttributes != null && packageAttributes.Count >= 1)
-                {
-                    nodeRefid = packageAttributes?.FirstOrDefault(a => a.ParentRefId == "Package")?.ParentRefId?.ToString();
-                    nodeName = packageAttributes?.FirstOrDefault(a => a.ParentNodeName == "DTS:Executable")?.ParentNodeName?.ToString();
-                }
-
-
-                // Collect all defined varibles in package
-
-
-                xpath = "//DTS:Variables/child::*";
-                if (XmlConfig != null)
-                {
-                    var allChildren = nav.Select(xpath, nsmgr);
-                    XmlConfig.Children = allChildren;
-                    logger.LogInformation($@"Running GetVariables");
-                    packageVariables = processingService.GetVariables(XmlConfig);
-                }
-                if (configuration != null && configuration.GetSection("ScanElements").GetChildren().Any())
-                {
-                    xpaths = configuration.GetSection("ScanElements").Get<List<string>>();
-                    if (xpaths != null && xpaths.Count >= 1)
-                    {
-                        foreach (string x in xpaths)
-                        {
-                            if (XmlConfig != null)
-                            {
-
-                                var allChildren = nav.Select(x, nsmgr);
-                                XmlConfig.Children = allChildren;
-                                logger.LogInformation($@"Running GetElements");
-                                elements = processingService.GetElements(XmlConfig);
-                                packageElements.AddRange(elements);
-                            }
-                        }
-                    }
-
-                }
-
-            }
 
         }
         catch (Exception e)
@@ -187,50 +217,6 @@ public static class Program
             logger.LogInformation($@"Program Error = {e}");
             throw;
         }
-
-
-        /*
-         Refactor all displays to be based off of CommandLineService.cs options
-        */
-        try
-        {
-            var elementAttributes = processingService?.GetAttributeListFromElements(packageElements);
-            if (elementAttributes != null)
-            {
-                packageAttributes?.AddRange(elementAttributes);
-            }
-            if(databaseService != null)
-            {
-                if (packageAttributes != null)
-                {
-                    var returnCount = await databaseService.InsertAttributesAsync(packageAttributes);
-                    Console.WriteLine($@"Writting {returnCount} attributes");
-                }
-                if (packageVariables != null)
-                {
-                    var returnCount = await databaseService.InsertVariablesAsync(packageVariables);
-                    Console.WriteLine($@"Writting {returnCount} Variables");
-                }
-                if (packageElements != null)
-                {
-                    var returnCount = await databaseService.InsertElementsAsync(packageElements);
-                    Console.WriteLine($@"Writting {returnCount} Elements");
-                }
-
-            }
-
-
-
-
-
-
-        }
-        catch (Exception e)
-        {
-            logger.LogInformation($@"Display Error = {e}");
-            throw;
-        }
-
 
     }
 }

@@ -1,7 +1,10 @@
-﻿namespace DTSXDataLoader.Service
+﻿using DTSXDataLoader.Models;
+
+namespace DTSXDataLoader.Service
 {
     public interface ICommandLineService
     {
-        void CheckCommandArguments(string[] args);
+       public IOptions CheckCommandArguments(string[] args);
+        public IEnumerable<string> GetArrayOfFiles(IOptions options);
     }
 }

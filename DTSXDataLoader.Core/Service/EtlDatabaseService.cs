@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using DTSXDataLoaderCore.Models;
+using DTSXDataLoader.Core.Models;
 using Dapper;
 using System.Runtime.CompilerServices;
 using System.ComponentModel.Design;
@@ -17,22 +17,45 @@ using Microsoft.Extensions.Configuration.CommandLine;
 using Microsoft.Extensions.Configuration.Binder;
 using Microsoft.Extensions.Configuration.EnvironmentVariables;
 using System.IO;
-namespace DTSXDataLoaderCore.Service;
+namespace DTSXDataLoader.Core.Service;
 
-public class DatabaseService : IDatabaseService
+public class EtlDatabaseService : IEtlDatabaseService
 {
     private readonly IConfiguration _configuration;
     private readonly ILogger _logger;
     private readonly string _connectionString;
 
-    public DatabaseService(IConfiguration configuration, ILogger logger)
+    public EtlDatabaseService(IConfiguration configuration, ILogger logger)
     {
         _configuration = configuration;
         _logger = logger;
-        _connectionString = _configuration.GetConnectionString("DefaultConnection");
+        _connectionString = _configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
     }
-    public async Task  TruncateTable(string tableName)
+    public async Task SaveEtlToDatabaseAsync( List<DtsElement> packageElements, List<DtsAttribute> packageAttributes, List<DtsVariable> packageVariables)
+    {
+       
+            if (packageAttributes != null)
+            {
+                _logger.LogInformation($@"Running InsertAttributesAsync()");
+                var returnCount = await InsertEtlAttributesAsync(packageAttributes);
+                _logger.LogInformation($@" Writting {returnCount} attributes");
+            }
+            if (packageVariables != null)
+            {
+                _logger.LogInformation($@"Running InsertVariablesAsync()");
+                var returnCount = await InsertEtlVariablesAsync(packageVariables);
+                _logger.LogInformation($@"Writting {returnCount} Variables");
+            }
+            if (packageElements != null)
+            {
+                _logger.LogInformation($@"Running InsertElementsAsync()");
+                var returnCount = await InsertEtlElementsAsync(packageElements);
+                _logger.LogInformation($@"Writting {returnCount} Elements");
+            }
+
+    }
+    public async Task  TruncateEtlTableAsync(string tableName)
     {
         try
         {
@@ -49,13 +72,13 @@ public class DatabaseService : IDatabaseService
 
     }
 
-    public async Task<bool> IsDbConnectionActive()
+    public async Task<bool> IsDbConnectionActiveAsync()
     {
         try
         {
-            int IsCheckAttribute = await CheckAttributesTable();
-            int IsCheckElement = await CheckElementsTable();
-            int IsCheckVariable = await CheckVariablesTable();
+            int IsCheckAttribute = await CheckEtlAttributesTableAsync();
+            int IsCheckElement = await CheckEtlElementsTableAsync();
+            int IsCheckVariable = await CheckEtlVariablesTableAsync();
             if ((IsCheckAttribute + IsCheckElement + IsCheckVariable) > 0)
             {
                 return false;
@@ -71,13 +94,17 @@ public class DatabaseService : IDatabaseService
 
 
     }
-    public async Task<int> CheckAttributesTable()
+    public async Task<int> CheckEtlAttributesTableAsync()
     {
         try
         {
 
             var tableName = _configuration.GetSection("ApplicationTables").GetValue<string>("DtsxAttributes");
             var sqlString = $@"IF OBJECT_ID(N'{tableName}', N'U') IS NOT NULL     PRINT 0	ELSE PRINT 1;";
+            if (string.IsNullOrEmpty(_connectionString))
+            {
+                _logger.LogCritical($@"CheckAttributesTable Error with connection string");
+             }
             using var connection = new SqlConnection(_connectionString);
             return await connection.ExecuteAsync(@$"{sqlString}");
         }
@@ -88,7 +115,7 @@ public class DatabaseService : IDatabaseService
         }
 
     }
-    public async Task<int> CheckElementsTable()
+    public async Task<int> CheckEtlElementsTableAsync()
     {
         try
         {
@@ -105,7 +132,7 @@ public class DatabaseService : IDatabaseService
         }
 
     }
-    public async Task<int> CheckVariablesTable()
+    public async Task<int> CheckEtlVariablesTableAsync()
     {
         try
         {
@@ -122,13 +149,47 @@ public class DatabaseService : IDatabaseService
         }
 
     }
-    public async Task<int> InsertElementsAsync(IEnumerable<DtsElement> elements)
+    public async Task  TruncateEtlTablesAllAsync()
+    {
+        try
+        {
+
+            var tableName = _configuration.GetSection("ApplicationTables").GetValue<string>("DtsxElements");
+            if(tableName != null)
+            {
+                Console.WriteLine($@"Truncating table {tableName}  ");
+                await TruncateEtlTableAsync(tableName);
+                Console.WriteLine($@"Truncate table {tableName} done ");
+            }
+
+              tableName = _configuration.GetSection("ApplicationTables").GetValue<string>("DtsxAttributes");
+            if (tableName != null)
+            {
+                Console.WriteLine($@"Truncating table {tableName}  ");
+                await TruncateEtlTableAsync(tableName);
+                Console.WriteLine($@"Truncate table {tableName} done ");
+            }
+              tableName = _configuration.GetSection("ApplicationTables").GetValue<string>("DtsxVariables");
+            if (tableName != null)
+            {
+                Console.WriteLine($@"Truncating table {tableName}  ");
+                await TruncateEtlTableAsync(tableName);
+                Console.WriteLine($@"Truncate table {tableName} done ");
+            }
+        }
+        catch (Exception e)
+        {
+            _logger.LogInformation($@"InsertElementsAsync Error = {e}");
+            throw;
+        }
+
+    }
+    public async Task<int> InsertEtlElementsAsync(IEnumerable<DtsElement> elements)
     {
         try
         {
             var tableName = _configuration.GetSection("ApplicationTables").GetValue<string>("DtsxElements");
-             await TruncateTable(tableName);
-            Console.WriteLine(  $@"Truncate table {tableName}  ");
+          
             using (var connection = new SqlConnection(_connectionString))
             {
 
@@ -147,14 +208,13 @@ public class DatabaseService : IDatabaseService
         }
     
     }
-    public   async Task<int> InsertAttributesAsync(IEnumerable<DtsAttribute> attributes)
+    public   async Task<int> InsertEtlAttributesAsync(IEnumerable<DtsAttribute> attributes)
     {
         try
         {
             var tableName = _configuration.GetSection("ApplicationTables").GetValue<string>("DtsxAttributes");
 
-            await   TruncateTable(tableName);
-            Console.WriteLine($@"Truncate table {tableName} ");
+ 
             using (var connection = new SqlConnection(_connectionString))
             {
                 try
@@ -164,7 +224,6 @@ public class DatabaseService : IDatabaseService
 ([CreationName],[Description],[Filename],[Package],[ParentNodeDtsId],[ParentNodeName],[ParentNodeType],[ParentGUID], [GUID],[ParentRefId],[RefId],[XPath]
 ,[ElementXPath],[AttributeName],[AttributeType],[AttributeValue]) VALUES (@CreationName,@Description,@Filename,@Package,@ParentNodeDtsId,@ParentNodeName,@ParentNodeType,@ParentGUID,@GUID,@ParentRefId,@RefId,@XPath,@ElementXPath,@AttributeName,@AttributeType
 ,@AttributeValue)";
-                    //await connection.OpenAsync();
                     var rowsAffected =    await connection.ExecuteAsync(sql, attributes);
                     if(rowsAffected == 0)
                     {
@@ -188,13 +247,12 @@ public class DatabaseService : IDatabaseService
             throw;
         }
     }
-    public async Task<int> InsertVariablesAsync(IEnumerable<DtsVariable> variables)
+    public async Task<int> InsertEtlVariablesAsync(IEnumerable<DtsVariable> variables)
     {
         try
         {
             var tableName = _configuration.GetSection("ApplicationTables").GetValue<string>("DtsxVariables");
-            await TruncateTable(tableName);
-            Console.WriteLine($@"Truncate table {tableName}  ");
+ 
             using (var connection = new SqlConnection(_connectionString))
             {
 
@@ -215,7 +273,7 @@ VALUES (@CreationName,@Description,@Filename,@Package,@ParentNodeDtsId,@ParentNo
        
 
     }
-    public async Task<IEnumerable<DtsVariable>> GetAllVariablesAsync()
+    public async Task<IEnumerable<DtsVariable>> GetEtlVariablesAllAsync()
     {
 
 
@@ -243,7 +301,7 @@ FROM {tableName} ";
 
 
     }
-    public async Task<IEnumerable<DtsAttribute>> GetAllAttributesAsync()
+    public async Task<IEnumerable<DtsAttribute>> GetEtlAttributesAllAsync()
     {
         IEnumerable<DtsAttribute> attributes = new List<DtsAttribute>();
 
@@ -268,7 +326,7 @@ FROM {tableName} ";
         }
 
     }
-    public async Task<IEnumerable<DtsElement>> GetAllElementsAsync()
+    public async Task<IEnumerable<DtsElement>> GetEtlElementsAllAsync()
     {
         IEnumerable<DtsElement> elements = new List<DtsElement>();
 

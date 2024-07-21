@@ -1,5 +1,5 @@
 ﻿
-namespace DTSXDataLoaderCore.Models
+namespace DTSXDataLoader.Core.Models
 {
     public interface IDtsElement  : IDtsBase
     {

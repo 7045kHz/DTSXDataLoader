@@ -1,4 +1,4 @@
-﻿using DTSXDataLoaderCore.Models;
+﻿using DTSXDataLoader.Core.Models;
 using System.Xml.XPath;
 using DTSXDataLoader.Service;
 namespace DTSXDataLoader.Service
