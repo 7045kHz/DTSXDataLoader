@@ -114,110 +114,112 @@ public static class Program
             if (commandLineService != null && databaseService != null && processingService != null && navigationService != null)
             {
                 await databaseService.TruncateEtlTablesAllAsync();
-                fileList = commandLineService.GetArrayOfFiles(options);
-                foreach (var file in fileList)
+                if (!string.IsNullOrEmpty(options.Path))
                 {
-                    FileName = file;
 
-
-                    XmlDocument doc = navigationService.NewXmlDocument(FileName);
-                    XPathNavigator nav = navigationService.CreateNavigator(doc);
-                    XmlNamespaceManager nsmgr = navigationService.CreateNameSpaceManager(nav.NameTable);
-
-
-                    XConfig XmlConfig = new XConfig()
+                    fileList = commandLineService.GetArrayOfFiles(options);
+                    foreach (var file in fileList)
                     {
-                        FileName = FileName,
-                        nsmgr = nsmgr,
-                        nodeRefid = nodeRefid,
-                        nodeName = nodeName,
-                    };
-                    logger.LogInformation(@$"Scanning file: {XmlConfig.FileName} Package {XmlConfig?.PackageName()}");
-
-                    if (packageAttributes != null && packageAttributes.Count >= 1)
-                    {
-                        nodeRefid = packageAttributes?.FirstOrDefault(a => a.ParentRefId == "Package")?.ParentRefId?.ToString();
-                        nodeName = packageAttributes?.FirstOrDefault(a => a.ParentNodeName == "DTS:Executable")?.ParentNodeName?.ToString();
-                    }
+                        FileName = file;
 
 
-                    // Collect all defined varibles in package
+                        XmlDocument doc = navigationService.NewXmlDocument(FileName);
+                        XPathNavigator nav = navigationService.CreateNavigator(doc);
+                        XmlNamespaceManager nsmgr = navigationService.CreateNameSpaceManager(nav.NameTable);
 
 
-                    xpath = "//DTS:Variables/child::*";
-                    if (XmlConfig != null)
-                    {
-                        var allChildren = nav.Select(xpath, nsmgr);
-                        XmlConfig.Children = allChildren;
-                        logger.LogInformation($@"Running GetVariables");
-                        packageVariables.AddRange(processingService.GetVariables(XmlConfig));
-                    }
-
-                    if (configuration != null && configuration.GetSection("ScanElements").GetChildren().Any())
-                    {
-                        xpaths = configuration.GetSection("ScanElements").Get<List<string>>();
-                        if (xpaths != null && xpaths.Count >= 1)
+                        XConfig XmlConfig = new XConfig()
                         {
-                            foreach (string x in xpaths)
-                            {
-                                if (XmlConfig != null)
-                                {
+                            FileName = FileName,
+                            nsmgr = nsmgr,
+                            nodeRefid = nodeRefid,
+                            nodeName = nodeName,
+                        };
+                        logger.LogInformation(@$"Scanning file: {XmlConfig.FileName} Package {XmlConfig?.PackageName()}");
 
-                                    var allChildren = nav.Select(x, nsmgr);
-                                    XmlConfig.Children = allChildren;
-                                    logger.LogInformation($@"Running GetElements");
-                                    elements = processingService.GetElements(XmlConfig);
-                                    packageElements.AddRange(elements);
-                                }
-                            }
+                        if (packageAttributes != null && packageAttributes.Count >= 1)
+                        {
+                            nodeRefid = packageAttributes?.FirstOrDefault(a => a.ParentRefId == "Package")?.ParentRefId?.ToString();
+                            nodeName = packageAttributes?.FirstOrDefault(a => a.ParentNodeName == "DTS:Executable")?.ParentNodeName?.ToString();
                         }
 
+
+                        // Collect all defined varibles in package
+
+
+                        xpath = "//DTS:Variables/child::*";
+                        if (XmlConfig != null)
+                        {
+                            var allChildren = nav.Select(xpath, nsmgr);
+                            XmlConfig.Children = allChildren;
+                            logger.LogInformation($@"Running GetVariables");
+                            packageVariables.AddRange(processingService.GetVariables(XmlConfig));
+                        }
+
+                        if (configuration != null && configuration.GetSection("ScanElements").GetChildren().Any())
+                        {
+                            xpaths = configuration.GetSection("ScanElements").Get<List<string>>();
+                            if (xpaths != null && xpaths.Count >= 1)
+                            {
+                                foreach (string x in xpaths)
+                                {
+                                    if (XmlConfig != null)
+                                    {
+
+                                        var allChildren = nav.Select(x, nsmgr);
+                                        XmlConfig.Children = allChildren;
+                                        logger.LogInformation($@"Running GetElements");
+                                        elements = processingService.GetElements(XmlConfig);
+                                        packageElements.AddRange(elements);
+                                    }
+                                }
+                            }
+
+                        }
+
+
+                    }
+                    try
+                    {
+                        logger.LogInformation($@"Getting Attribute List From Elements");
+                        var elementAttributes = processingService?.GetAttributeListFromElements(packageElements);
+                        if (elementAttributes != null)
+                        {
+                            packageAttributes?.AddRange(elementAttributes);
+                        }
+
+                        if (packageAttributes != null && packageVariables != null && packageElements != null)
+                        {
+                            logger.LogInformation(@$"Saving data to database");
+                            await databaseService.SaveEtlToDatabaseAsync(packageElements, packageAttributes, packageVariables);
+                        }
+                        else
+                        {
+                            logger.LogError($@"Not all lists available to insert to database");
+                        }
+
+
+
+                    }
+                    catch (Exception e)
+                    {
+                        logger.LogInformation($@"Display Error = {e}");
+                        throw;
                     }
 
-
                 }
-                try
+                else
                 {
-                    logger.LogInformation($@"Getting Attribute List From Elements");
-                    var elementAttributes = processingService?.GetAttributeListFromElements(packageElements);
-                    if (elementAttributes != null)
-                    {
-                        packageAttributes?.AddRange(elementAttributes);
-                    }
-
-                    if ( packageAttributes != null && packageVariables != null && packageElements != null)
-                    {
-                        logger.LogInformation(@$"Saving data to database");
-                        await databaseService.SaveEtlToDatabaseAsync(packageElements,packageAttributes,packageVariables);
-                    }
-                    else
-                    {
-                        logger.LogError($@"Not all lists available to insert to database");
-                    }
-
-
-
+                    logger.LogCritical($@"File {FileName} Missing or empty selection");
+                    Environment.Exit(-1);
                 }
-                catch (Exception e)
-                {
-                    logger.LogInformation($@"Display Error = {e}");
-                    throw;
-                }
-
             }
-            else
-            {
-                logger.LogCritical($@"File {FileName} Missing or empty selection");
-                Environment.Exit(-1);
-            }
-
-
         }
         catch (Exception e)
         {
             logger.LogInformation($@"Program Error = {e}");
             throw;
         }
-
+    
     }
 }

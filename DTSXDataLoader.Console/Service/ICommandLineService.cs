@@ -4,7 +4,7 @@ namespace DTSXDataLoader.Service
 {
     public interface ICommandLineService
     {
-       public IOptions CheckCommandArguments(string[] args);
-        public IEnumerable<string> GetArrayOfFiles(IOptions options);
+         IOptions CheckCommandArguments(string[] args);
+          IEnumerable<string> GetArrayOfFiles(IOptions options);
     }
 }

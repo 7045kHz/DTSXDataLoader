@@ -54,7 +54,15 @@ namespace DTSXDataLoader.Service
                 if (attr.HasFlag(FileAttributes.Directory))
                 {
                     Console.WriteLine("Its a directory");
-                    returnList = _fileService.GetAllFilesInDirectory(options.Path, "*.dtsx");
+                    if (!string.IsNullOrEmpty(options.Extension))
+                    {
+                        returnList = _fileService.GetAllFilesInDirectory(options.Path, options.Extension);
+                    }
+                    else
+                    {
+                        returnList = _fileService.GetAllFilesInDirectory(options.Path, "*.dtsx");
+                    }
+                    
                     return returnList;
                 }
                 else
@@ -76,7 +84,7 @@ namespace DTSXDataLoader.Service
 
 
         }
-
+      
     }
 
 }

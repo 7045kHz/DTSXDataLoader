@@ -18,7 +18,8 @@ namespace DTSXDataLoader.Models
         [Option('s', "sql", Required = false, HelpText = "SQL")]
         public bool IsSql { get; set; } = false;
 
-
+        [Option('x', "extension", Required = false, HelpText = "non-dtsx extension")]
+        public string? Extension { get; set; } 
         [Option('o', "Output", Required = false, HelpText = "Output Directory")]
         public string? OutputDirectory { get; set; }
     }
