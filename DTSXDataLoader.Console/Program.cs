@@ -39,6 +39,7 @@ public static class Program
             //  .AddSingleton<IDisplayService, DisplayService>()
             .AddSingleton<IDocumentProcessingService, DocumentProcessingService>()
             .AddSingleton<ICommandLineService, CommandLineService>()
+            .AddSingleton<IFileService, FileService>()
             .AddSingleton<IEtlDatabaseService, EtlDatabaseService>()
             .AddSingleton<INavigationService, NavigationService>()
             .AddScoped<IConfiguration>(_ => configuration)
