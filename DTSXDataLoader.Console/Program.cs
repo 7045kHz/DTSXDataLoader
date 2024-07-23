@@ -117,7 +117,7 @@ public static class Program
                 if (!string.IsNullOrEmpty(options.Path))
                 {
 
-                    fileList = commandLineService.GetArrayOfFiles(options);
+                    fileList = commandLineService.GetArrayOfFilesFromOptions(options);
                     foreach (var file in fileList)
                     {
                         FileName = file;

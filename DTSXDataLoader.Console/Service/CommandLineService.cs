@@ -44,7 +44,7 @@ namespace DTSXDataLoader.Service
         }
  
 
-        public IEnumerable<string> GetArrayOfFiles(IOptions options)
+        public IEnumerable<string> GetArrayOfFilesFromOptions(IOptions options)
         {
             IEnumerable<string> returnList = new List<string>();
 
