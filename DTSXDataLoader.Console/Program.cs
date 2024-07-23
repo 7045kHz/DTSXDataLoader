@@ -58,10 +58,10 @@ public static class Program
         List<DtsVariable>? packageVariables = new List<DtsVariable>();
 
         IEnumerable<string> fileList = new List<string>();
-        string? FileName = null;
-        string? nodeRefid = null;
-        string? nodeName = null;
-        string? xpath = null;
+        string FileName = string.Empty;
+        string? nodeRefid   = string.Empty;
+        string? nodeName =   string.Empty;
+        string xpath = string.Empty;
         bool? IsDbActive = false;
         List<string>? xpaths;
 
@@ -72,8 +72,11 @@ public static class Program
             if (commandLineService != null)
             {
                 options = commandLineService.CheckCommandArguments(args);
-                FileName = options.Path;
-                logger.LogInformation(@$"Scanning: {FileName}");
+                if (!string.IsNullOrEmpty(options.Path))
+                {
+                    FileName = options.Path;
+                    logger.LogInformation(@$"Scanning: {FileName}");
+                }
             }
             else
             {
@@ -128,6 +131,21 @@ public static class Program
                         XmlNamespaceManager nsmgr = navigationService.CreateNameSpaceManager(nav.NameTable);
 
 
+                        
+
+                        if (packageAttributes != null && packageAttributes.Count >= 1   )
+                        {
+                            if (!string.IsNullOrEmpty(packageAttributes?.Find(a => a.ParentRefId == "Package")?.ParentRefId))
+                            {
+                                nodeRefid = packageAttributes?.Find(a => a.ParentRefId == "Package")?.ParentRefId;
+
+                            }
+                            if (!string.IsNullOrEmpty(packageAttributes?.Find(a => a.ParentNodeName == "DTS:Executable")?.ParentNodeName))
+                            {
+                                nodeName = packageAttributes?.Find(a => a.ParentNodeName == "DTS:Executable")?.ParentNodeName;
+
+                            }
+                        }
                         XConfig XmlConfig = new XConfig()
                         {
                             FileName = FileName,
@@ -136,12 +154,6 @@ public static class Program
                             nodeName = nodeName,
                         };
                         logger.LogInformation(@$"Scanning file: {XmlConfig.FileName} Package {XmlConfig?.PackageName()}");
-
-                        if (packageAttributes != null && packageAttributes.Count >= 1)
-                        {
-                            nodeRefid = packageAttributes?.FirstOrDefault(a => a.ParentRefId == "Package")?.ParentRefId?.ToString();
-                            nodeName = packageAttributes?.FirstOrDefault(a => a.ParentNodeName == "DTS:Executable")?.ParentNodeName?.ToString();
-                        }
 
 
                         // Collect all defined varibles in package
