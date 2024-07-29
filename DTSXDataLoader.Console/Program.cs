@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using DTSXDataLoader.Models;
+using System.Collections.Generic;
 namespace DTSXDataLoader;
 
 public static class Program
@@ -56,11 +57,12 @@ public static class Program
         List<DtsElement>? packageElements = new List<DtsElement>();
         List<DtsElement>? elements = new List<DtsElement>();
         List<DtsVariable>? packageVariables = new List<DtsVariable>();
+        List<DtsMapper>? packageDataMapper = new List<DtsMapper>();
 
         IEnumerable<string> fileList = new List<string>();
         string FileName = string.Empty;
-        string? nodeRefid   = string.Empty;
-        string? nodeName =   string.Empty;
+        string? nodeRefid = string.Empty;
+        string? nodeName = string.Empty;
         string xpath = string.Empty;
         bool? IsDbActive = false;
         List<string>? xpaths;
@@ -131,9 +133,9 @@ public static class Program
                         XmlNamespaceManager nsmgr = navigationService.CreateNameSpaceManager(nav.NameTable);
 
 
-                        
 
-                        if (packageAttributes != null && packageAttributes.Count >= 1   )
+
+                        if (packageAttributes != null && packageAttributes.Count >= 1)
                         {
                             if (!string.IsNullOrEmpty(packageAttributes?.Find(a => a.ParentRefId == "Package")?.ParentRefId))
                             {
@@ -154,11 +156,32 @@ public static class Program
                             nodeName = nodeName,
                         };
                         logger.LogInformation(@$"Scanning file: {XmlConfig.FileName} Package {XmlConfig?.PackageName()}");
+                       // xpath = "//pipeline/components/component/properties/property[@name='OpenRowset']";
 
-
-                        // Collect all defined varibles in package
-
-
+                        xpath = "//pipeline/components/component/properties/property[@name='OpenRowset' or @name='SqlCommandVariable']";
+                        if (XmlConfig != null)
+                        {
+                            var allChildren = nav.Select(xpath, nsmgr);
+                            Console.WriteLine("");
+                           
+                            XmlConfig.Children = allChildren;
+                            logger.LogInformation($@"Running GetFlowDataMapper");
+                            packageDataMapper.AddRange(processingService.GetFlowDataMapper(XmlConfig));
+                        }
+                       
+                        // Collect SQL Execute
+                        xpath = "//DTS:Executable/DTS:ObjectData/SQLTask:SqlTaskData";
+                        if (XmlConfig != null)
+                        {
+                            var allChildren = nav.Select(xpath, nsmgr);
+                            XmlConfig.Children = allChildren;
+                            logger.LogInformation($@"Running GetSqlExeMapper");
+                            packageDataMapper.AddRange(processingService.GetSqlExeMapper(XmlConfig));
+                        } 
+                            Console.WriteLine("PAUSE");
+                     
+                        // Find Pipeline  SQL
+                        
                         xpath = "//DTS:Variables/child::*";
                         if (XmlConfig != null)
                         {
@@ -203,7 +226,7 @@ public static class Program
                         if (packageAttributes != null && packageVariables != null && packageElements != null)
                         {
                             logger.LogInformation(@$"Saving data to database");
-                            await databaseService.SaveEtlToDatabaseAsync(packageElements, packageAttributes, packageVariables);
+                            await databaseService.SaveEtlToDatabaseAsync(packageElements, packageAttributes, packageVariables, packageDataMapper);
                         }
                         else
                         {
@@ -232,6 +255,6 @@ public static class Program
             logger.LogInformation($@"Program Error = {e}");
             throw;
         }
-    
+
     }
 }

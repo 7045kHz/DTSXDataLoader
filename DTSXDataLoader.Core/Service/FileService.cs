@@ -118,7 +118,7 @@ namespace DTSXDataLoader.Core.Service
             if (!string.IsNullOrEmpty(path) && !string.IsNullOrEmpty(extension))
             {
                 var directoryInfo = new DirectoryInfo(path);
-                return directoryInfo.GetFiles(extension, System.IO.SearchOption.AllDirectories).Select(i => i.FullName);
+                return directoryInfo.GetFiles(extension, System.IO.SearchOption.TopDirectoryOnly).Select(i => i.FullName);
             }
             return returnList;
         }

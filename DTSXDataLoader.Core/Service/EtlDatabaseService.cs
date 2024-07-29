@@ -32,10 +32,16 @@ public class EtlDatabaseService : IEtlDatabaseService
         _connectionString = _configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
     }
-    public async Task SaveEtlToDatabaseAsync( List<DtsElement> packageElements, List<DtsAttribute> packageAttributes, List<DtsVariable> packageVariables)
+    public async Task SaveEtlToDatabaseAsync( List<DtsElement> packageElements, List<DtsAttribute> packageAttributes, List<DtsVariable> packageVariables, List<DtsMapper> mapper)
     {
-       
-            if (packageAttributes != null)
+
+        if (mapper != null)
+        {
+            _logger.LogInformation($@"Running InsertEtlMapperAsync()");
+            var returnCount = await InsertEtlMapperAsync(mapper);
+            _logger.LogInformation($@" Writting {returnCount} Mapper");
+        }
+        if (packageAttributes != null)
             {
                 _logger.LogInformation($@"Running InsertAttributesAsync()");
                 var returnCount = await InsertEtlAttributesAsync(packageAttributes);
@@ -79,7 +85,8 @@ public class EtlDatabaseService : IEtlDatabaseService
             int IsCheckAttribute = await CheckEtlAttributesTableAsync();
             int IsCheckElement = await CheckEtlElementsTableAsync();
             int IsCheckVariable = await CheckEtlVariablesTableAsync();
-            if ((IsCheckAttribute + IsCheckElement + IsCheckVariable) > 0)
+            int IsCheckMapper = await CheckEtlMapperTableAsync();
+            if ((IsCheckAttribute + IsCheckElement + IsCheckVariable + IsCheckMapper ) > 0)
             {
                 return false;
             }
@@ -132,6 +139,23 @@ public class EtlDatabaseService : IEtlDatabaseService
         }
 
     }
+    public async Task<int> CheckEtlMapperTableAsync()
+    {
+        try
+        {
+
+            var tableName = _configuration.GetSection("ApplicationTables").GetValue<string>("DtsxMapper");
+            var sqlString = $@"IF OBJECT_ID(N'{tableName}', N'U') IS NOT NULL     PRINT 0	ELSE PRINT 1;";
+            using var connection = new SqlConnection(_connectionString);
+            return await connection.ExecuteAsync(@$"{sqlString}");
+        }
+        catch (Exception e)
+        {
+            _logger.LogInformation($@"CheckElementsTable Error = {e}");
+            return -1;
+        }
+
+    }
     public async Task<int> CheckEtlVariablesTableAsync()
     {
         try
@@ -154,7 +178,14 @@ public class EtlDatabaseService : IEtlDatabaseService
         try
         {
 
-            var tableName = _configuration.GetSection("ApplicationTables").GetValue<string>("DtsxElements");
+            var tableName = _configuration.GetSection("ApplicationTables").GetValue<string>("DtsxMapper");
+            if (tableName != null)
+            {
+                Console.WriteLine($@"Truncating table {tableName}  ");
+                await TruncateEtlTableAsync(tableName);
+                Console.WriteLine($@"Truncate table {tableName} done ");
+            }
+            tableName = _configuration.GetSection("ApplicationTables").GetValue<string>("DtsxElements");
             if(tableName != null)
             {
                 Console.WriteLine($@"Truncating table {tableName}  ");
@@ -175,6 +206,29 @@ public class EtlDatabaseService : IEtlDatabaseService
                 Console.WriteLine($@"Truncating table {tableName}  ");
                 await TruncateEtlTableAsync(tableName);
                 Console.WriteLine($@"Truncate table {tableName} done ");
+            }
+        }
+        catch (Exception e)
+        {
+            _logger.LogInformation($@"InsertElementsAsync Error = {e}");
+            throw;
+        }
+
+    }
+    public async Task<int> InsertEtlMapperAsync(IEnumerable<DtsMapper> mapper)
+    {
+        try
+        {
+            var tableName = _configuration.GetSection("ApplicationTables").GetValue<string>("DtsxMapper");
+
+            using (var connection = new SqlConnection(_connectionString))
+            {
+
+                var sql = @$"insert into {tableName} ([Description] ,[Package]  ,[RefId]  ,[SqlStatement]  ,[ConnectionString]  ,[ConnectionName]  ,[ConnectionDtsId]
+      ,[ConnectionType]  ,[ConnectionRefId]  ,[Name]  ,[ComponentType]) VALUES (@Description ,@Package  ,@RefId  ,@SqlStatement  ,@ConnectionString  ,@ConnectionName  ,@ConnectionDtsId
+      ,@ConnectionType  ,@ConnectionRefId  ,@Name  ,@ComponentType)";
+                var rowsAffected = await connection.ExecuteAsync(sql, mapper);
+                return rowsAffected;
             }
         }
         catch (Exception e)
