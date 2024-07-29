@@ -5,7 +5,9 @@ namespace DTSXDataLoader.Core.Service
 {
     public interface  IEtlDatabaseService
     {
+        Task<int> InsertEtlMapperAsync(IEnumerable<DtsMapper> mapper);
         Task<int> CheckEtlAttributesTableAsync();
+        Task<int> CheckEtlMapperTableAsync();
         Task<int> CheckEtlElementsTableAsync();
         Task<int> CheckEtlVariablesTableAsync();
         Task<bool> IsDbConnectionActiveAsync();
@@ -17,7 +19,7 @@ namespace DTSXDataLoader.Core.Service
         Task<IEnumerable<DtsAttribute>> GetEtlAttributesAllAsync();
         Task<IEnumerable<DtsVariable>> GetEtlVariablesAllAsync();
          Task TruncateEtlTablesAllAsync();
-        Task SaveEtlToDatabaseAsync(List<DtsElement> packageElements, List<DtsAttribute> packageAttributes, List<DtsVariable> packageVariables);
+        Task SaveEtlToDatabaseAsync(List<DtsElement> packageElements, List<DtsAttribute> packageAttributes, List<DtsVariable> packageVariables, List<DtsMapper> mapper);
 
     }
 }

@@ -1,0 +1,23 @@
+select a.Package, a.ParentRefId, a.cmn, a.tdv, a.AttributeName, a.CMD FROM (SELECT 
+      e.[Package]
+      ,e.[ParentRefId]
+	--  ,cm= (select DISTINCT AttributeValue from [PROTO].[SSIS].[DTSX_Attributes]  cm where cm.RefId=e.RefId and cm.AttributeName='connectionManagerID') 
+	--  ,sm= (select DISTINCT AttributeValue from [PROTO].[SSIS].[DTSX_Attributes]  sm where sm.RefId=cm.RefId and cm.AttributeName='connectionManagerID') 
+	  ,cmn=cm.AttributeValue
+	--  ,cm.Id
+ 
+	  ,tdv=tdsid.AttributeValue
+	  ,sqt.AttributeName
+ 
+	  ,'CMD'=s.AttributeValue
+
+  FROM [PROTO].[SSIS].[DTSX_Elements] e 
+ left join [PROTO].[SSIS].[DTSX_Attributes]  cm on cm.RefId=e.RefId and  cm.AttributeName='connectionManagerID' and cm.Package=e.Package
+ left  join [PROTO].[SSIS].[DTSX_Attributes]  tdsid on tdsid.ParentRefId=cm.AttributeValue and tdsid.AttributeName='DTS:DTSID' and tdsid.Package=e.Package
+  left   join  [PROTO].[SSIS].[DTSX_Attributes] sqt on sqt.AttributeName = 'SQLTask:Connection' and sqt.AttributeValue=tdsid.AttributeValue  and sqt.Package=e.Package
+  left    join [PROTO].[SSIS].[DTSX_Attributes] s on s.ElementXPath=sqt.ElementXPath and s.AttributeName='SQLTask:SqlStatementSource' and s.Package=e.Package
+  where  e.Name='connection' and sqt.AttributeName='SQLTask:Connection'
+
+  ) a
+  group by a.Package, a.ParentRefId, a.cmn, a.tdv, a.AttributeName, a.CMD
+
