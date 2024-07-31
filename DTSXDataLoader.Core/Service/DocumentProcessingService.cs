@@ -95,6 +95,7 @@ namespace DTSXDataLoader.Service
             }
 
         }
+
         public List<DtsMapper> GetSqlExeMapper(XConfig config)
         {
             try
@@ -156,7 +157,7 @@ namespace DTSXDataLoader.Service
         }
         public List<DtsMapper> GetFlowDataMapper(XConfig config)
         {
-            
+
             try
             {
                 var xpath = string.Empty;
@@ -172,50 +173,96 @@ namespace DTSXDataLoader.Service
 
                         foreach (XPathNavigator x in allChildren)
                         {
-                            if (!string.IsNullOrEmpty(x.Value))
+                            if (x.Name != null)
                             {
-                                DtsMapper dataMapp = new DtsMapper();
+
+
+                                var dataMapp = new DtsMapper();
 
 
 
-
-                                dataMapp.Package = config.PackageName();
-                                dataMapp.SqlStatement = x?.Value;
-                                var comp = x?.Clone();
-                                xpath = $@"parent::node()";
-                                var d = comp?.SelectSingleNode(xpath, config.nsmgr);
-                                if (d != null && d.MoveToParent())
+                                var componentClassID = x.GetAttribute("componentClassID", x.NamespaceURI);
+                                if (!string.IsNullOrEmpty(componentClassID) && componentClassID.Contains("Microsoft.FlatFileDestination"))
                                 {
-                                    dataMapp.ComponentType = d.GetAttribute("componentClassID", d.NamespaceURI);
-                                    Console.WriteLine("pause");
-                                }
-                                xpath = "../../connections/connection";
+                                    dataMapp.Package = config.PackageName();
 
-                                var p = x.SelectSingleNode(xpath, config.nsmgr);
-                                dataMapp.ConnectionRefId = p.GetAttribute("connectionManagerID", p.NamespaceURI);
-                                conXpath = $@"parent::node()";
-                                var e = x.SelectSingleNode(conXpath, config.nsmgr);
-                                if (e != null && e.MoveToParent())
-                                {
-                                    dataMapp.Description = e.GetAttribute("description", e.NamespaceURI);
-                                    dataMapp.RefId = e.GetAttribute("refId", e.NamespaceURI);
-                                    dataMapp.Name = e.GetAttribute("name", e.NamespaceURI);
+                                    dataMapp.ComponentType = x.GetAttribute("componentClassID", x.NamespaceURI);
+                                    dataMapp.ConnectionType = x.GetAttribute("componentClassID", x.NamespaceURI);
+                                    dataMapp.Description = x.GetAttribute("description", x.NamespaceURI);
+                                    dataMapp.RefId = x.GetAttribute("refId", x.NamespaceURI);
+                                    dataMapp.Name = x.GetAttribute("name", x.NamespaceURI);
+                                    var comp = x?.Clone();
+                                    xpath = $@"./connections/connection";
+                                    var d = comp?.SelectSingleNode(xpath, config.nsmgr);
+                                    if (d != null)
+                                    {
+                                        dataMapp.ConnectionRefId = d.GetAttribute("connectionManagerRefId", d.NamespaceURI);
+                                        xpath = @$"//DTS:ConnectionManagers/DTS:ConnectionManager[@DTS:refId='{dataMapp.ConnectionRefId}']";
+
+                                        var c = d.SelectSingleNode(xpath, config.nsmgr);
+                                        if (c != null)
+                                        {
+                                            dataMapp.ConnectionDtsId = c.GetAttribute("DTSID", c.NamespaceURI);
+                                            dataMapp.ConnectionName = c.GetAttribute("ObjectName", c.NamespaceURI);
+                                            xpath = $@"./DTS:ObjectData/DTS:ConnectionManager";
+                                            var cm = c.SelectSingleNode(xpath, config.nsmgr);
+                                            if (cm != null)
+                                            {
+                                                dataMapp.ConnectionString = cm.GetAttribute("ConnectionString", c.NamespaceURI);
+                                            }
+                                            
+                                            Console.WriteLine("pause");
+                                        }
+                                    }
                                 }
-                                conXpath = @$"//DTS:ConnectionManagers/DTS:ConnectionManager[@DTS:refId='{dataMapp.ConnectionRefId}']/DTS:ObjectData/DTS:ConnectionManager";
-                                var c = x.SelectSingleNode(conXpath, config.nsmgr);
-                                if (c != null)
+                                else
                                 {
-                                    dataMapp.ConnectionString = c.GetAttribute("ConnectionString", c.NamespaceURI);
+                                    if (!string.IsNullOrEmpty(x.Value))
+                                    {
+                                        dataMapp.Package = config.PackageName();
+
+                                        dataMapp.SqlStatement = x?.Value;
+                                        var comp = x?.Clone();
+                                        xpath = $@"parent::node()";
+                                        var d = comp?.SelectSingleNode(xpath, config.nsmgr);
+                                        if (d != null && d.MoveToParent())
+                                        {
+                                            dataMapp.ComponentType = d.GetAttribute("componentClassID", d.NamespaceURI);
+                                            Console.WriteLine("pause");
+                                        }
+                                        xpath = "../../connections/connection";
+
+                                        var p = x.SelectSingleNode(xpath, config.nsmgr);
+                                        dataMapp.ConnectionRefId = p.GetAttribute("connectionManagerID", p.NamespaceURI);
+                                        conXpath = $@"parent::node()";
+                                        var e = x.SelectSingleNode(conXpath, config.nsmgr);
+                                        if (e != null && e.MoveToParent())
+                                        {
+                                            dataMapp.Description = e.GetAttribute("description", e.NamespaceURI);
+                                            dataMapp.RefId = e.GetAttribute("refId", e.NamespaceURI);
+                                            dataMapp.Name = e.GetAttribute("name", e.NamespaceURI);
+                                        }
+                                        conXpath = @$"//DTS:ConnectionManagers/DTS:ConnectionManager[@DTS:refId='{dataMapp.ConnectionRefId}']/DTS:ObjectData/DTS:ConnectionManager";
+                                        var c = x.SelectSingleNode(conXpath, config.nsmgr);
+                                        if (c != null)
+                                        {
+                                            dataMapp.ConnectionString = c.GetAttribute("ConnectionString", c.NamespaceURI);
+                                        }
+                                        conXpath = @$"//DTS:ConnectionManagers/DTS:ConnectionManager[@DTS:refId='{dataMapp.ConnectionRefId}']";
+                                        c = c?.SelectSingleNode(conXpath, config.nsmgr);
+                                        if (c != null)
+                                        {
+                                            dataMapp.ConnectionDtsId = c.GetAttribute("DTSID", c.NamespaceURI);
+                                            dataMapp.ConnectionName = c?.GetAttribute("ObjectName", c.NamespaceURI);
+                                            dataMapp.ConnectionType = c?.GetAttribute("CreationName", c.NamespaceURI);
+                                        }
+                                    }
+
                                 }
-                                conXpath = @$"//DTS:ConnectionManagers/DTS:ConnectionManager[@DTS:refId='{dataMapp.ConnectionRefId}']";
-                                c = c?.SelectSingleNode(conXpath, config.nsmgr);
-                                if (c != null)
+                                if (!string.IsNullOrEmpty(dataMapp.Name))
                                 {
-                                    dataMapp.ConnectionDtsId = c.GetAttribute("DTSID", c.NamespaceURI);
-                                    dataMapp.ConnectionName = c?.GetAttribute("ObjectName", c.NamespaceURI);
-                                    dataMapp.ConnectionType = c?.GetAttribute("CreationName", c.NamespaceURI);
+                                    mapperList.Add(dataMapp);
                                 }
-                                mapperList.Add(dataMapp);
                             }
                         }
                     }

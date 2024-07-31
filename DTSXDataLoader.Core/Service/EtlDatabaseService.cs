@@ -32,36 +32,73 @@ public class EtlDatabaseService : IEtlDatabaseService
         _connectionString = _configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
     }
-    public async Task SaveEtlToDatabaseAsync( List<DtsElement> packageElements, List<DtsAttribute> packageAttributes, List<DtsVariable> packageVariables, List<DtsMapper> mapper)
+    public async Task SaveAllEtlToDb(List<DtsElement> packageElements, List<DtsAttribute> packageAttributes, List<DtsVariable> packageVariables, List<DtsMapper> mapper, bool truncate)
     {
 
         if (mapper != null)
         {
-            _logger.LogInformation($@"Running InsertEtlMapperAsync()");
-            var returnCount = await InsertEtlMapperAsync(mapper);
+            _logger.LogInformation($@"Running InsertEtlAsync<DtsMapper>()");
+            var tableName = _configuration.GetSection("ApplicationTables").GetValue<string>("DtsxMapper");
+            if (truncate && !string.IsNullOrEmpty(tableName))
+            {
+                await TruncateEtlTableAsync(tableName);
+            }
+            var sql = @$"insert into {tableName} ([Description] ,[Package]  ,[RefId]  ,[SqlStatement]  ,[ConnectionString]  ,[ConnectionName]  ,[ConnectionDtsId]
+      ,[ConnectionType]  ,[ConnectionRefId]  ,[Name]  ,[ComponentType]) VALUES (@Description ,@Package  ,@RefId  ,@SqlStatement  ,@ConnectionString  ,@ConnectionName  ,@ConnectionDtsId
+      ,@ConnectionType  ,@ConnectionRefId  ,@Name  ,@ComponentType)";
+            var returnCount = await InsertEtlAsync<DtsMapper>(mapper, sql);
             _logger.LogInformation($@" Writting {returnCount} Mapper");
         }
         if (packageAttributes != null)
+        {
+            _logger.LogInformation($@"Running InsertEtlAsync<DtsAttribute>()");
+            var tableName = _configuration.GetSection("ApplicationTables").GetValue<string>("DtsxAttributes");
+            if (truncate && !string.IsNullOrEmpty(tableName))
             {
-                _logger.LogInformation($@"Running InsertAttributesAsync()");
-                var returnCount = await InsertEtlAttributesAsync(packageAttributes);
-                _logger.LogInformation($@" Writting {returnCount} attributes");
+                await TruncateEtlTableAsync(tableName);
             }
-            if (packageVariables != null)
+            var sql = @$"insert into {tableName}
+([CreationName],[Description],[Filename],[Package],[ParentNodeDtsId],[ParentNodeName],[ParentNodeType],[ParentGUID], [GUID],[ParentRefId],[RefId],[XPath]
+,[ElementXPath],[AttributeName],[AttributeType],[AttributeValue]) VALUES (@CreationName,@Description,@Filename,@Package,@ParentNodeDtsId,@ParentNodeName,@ParentNodeType,@ParentGUID,@GUID,@ParentRefId,@RefId,@XPath,@ElementXPath,@AttributeName,@AttributeType
+,@AttributeValue)";
+            var returnCount = await InsertEtlAsync<DtsAttribute>(packageAttributes, sql);
+            _logger.LogInformation($@" Writting {returnCount} attributes");
+        }
+        if (packageVariables != null)
+        {
+            _logger.LogInformation($@"Running InsertEtlAsync<DtsVariable>()");
+            var tableName = _configuration.GetSection("ApplicationTables").GetValue<string>("DtsxVariables");
+            if (truncate && !string.IsNullOrEmpty(tableName))
             {
-                _logger.LogInformation($@"Running InsertVariablesAsync()");
-                var returnCount = await InsertEtlVariablesAsync(packageVariables);
-                _logger.LogInformation($@"Writting {returnCount} Variables");
-            }
-            if (packageElements != null)
-            {
-                _logger.LogInformation($@"Running InsertElementsAsync()");
-                var returnCount = await InsertEtlElementsAsync(packageElements);
-                _logger.LogInformation($@"Writting {returnCount} Elements");
+                await TruncateEtlTableAsync(tableName);
             }
 
+            var sql = @$"insert into {tableName}
+([CreationName],[Description],[Filename],[Package],[ParentNodeDtsId],[ParentNodeName],[ParentNodeType],[ParentGUID], [GUID],[ParentRefId],[RefId],[XPath],[EvaluateAsExpression],[IncludeInDebugDump],[VariableDataType]
+,[VariableDtsxId],[VariableExpression],[VariableName],[VariableNameSpace],[VariableValue]) 
+VALUES (@CreationName,@Description,@Filename,@Package,@ParentNodeDtsId,@ParentNodeName,@ParentNodeType,@ParentGUID,@GUID,@ParentRefId,@RefId,@XPath,@EvaluateAsExpression,@IncludeInDebugDump,@VariableDataType,@VariableDtsxId
+,@VariableExpression,@VariableName,@VariableNameSpace,@VariableValue)";
+            var returnCount = await InsertEtlAsync<DtsVariable>(packageVariables,sql);
+            _logger.LogInformation($@"Writting {returnCount} Variables");
+        }
+        if (packageElements != null)
+        {
+            _logger.LogInformation($@"Running InsertEtlAsync<DtsElement>()");
+            var tableName = _configuration.GetSection("ApplicationTables").GetValue<string>("DtsxElements");
+            if (truncate && !string.IsNullOrEmpty(tableName))
+            {
+                await TruncateEtlTableAsync(tableName);
+            }
+            var sql = @$"insert into {tableName}
+                    ([CreationName], [Description], [Filename], [Package], [ParentNodeDtsId], [ParentNodeName], [ParentNodeType], [ParentGUID], [GUID]
+        , [ParentRefId], [RefId], [XPath], [DtsId], [Name], [NodeType], [Value], [XmlType]) VALUES (@CreationName, @Description, @Filename, @Package, @ParentNodeDtsId, @ParentNodeName, @ParentNodeType, @ParentGUID, @GUID
+        , @ParentRefId, @RefId, @XPath, @DtsId, @Name, @NodeType, @Value, @XmlType)";
+            var returnCount = await InsertEtlAsync<DtsElement>(packageElements,sql);
+            _logger.LogInformation($@"Writting {returnCount} Elements");
+        }
+
     }
-    public async Task  TruncateEtlTableAsync(string tableName)
+    public async Task TruncateEtlTableAsync(string tableName)
     {
         try
         {
@@ -73,7 +110,7 @@ public class EtlDatabaseService : IEtlDatabaseService
         catch (Exception e)
         {
             _logger.LogInformation($@"TruncateTable Error = {e}");
-            
+
         }
 
     }
@@ -82,11 +119,11 @@ public class EtlDatabaseService : IEtlDatabaseService
     {
         try
         {
-            int IsCheckAttribute = await CheckEtlAttributesTableAsync();
-            int IsCheckElement = await CheckEtlElementsTableAsync();
-            int IsCheckVariable = await CheckEtlVariablesTableAsync();
-            int IsCheckMapper = await CheckEtlMapperTableAsync();
-            if ((IsCheckAttribute + IsCheckElement + IsCheckVariable + IsCheckMapper ) > 0)
+            int? IsCheckAttribute = await CheckEtlDependentTableAsync("DtsxAttributes");
+            int? IsCheckElement = await CheckEtlDependentTableAsync("DtsxElements");
+            int? IsCheckVariable = await CheckEtlDependentTableAsync("DtsxVariables");
+            int? IsCheckMapper = await CheckEtlDependentTableAsync("DtsxMapper");
+            if ((IsCheckAttribute + IsCheckElement + IsCheckVariable + IsCheckMapper) > 0)
             {
                 return false;
             }
@@ -101,232 +138,50 @@ public class EtlDatabaseService : IEtlDatabaseService
 
 
     }
-    public async Task<int> CheckEtlAttributesTableAsync()
+
+    public async Task<int> CheckEtlDependentTableAsync(string table)
     {
         try
         {
 
-            var tableName = _configuration.GetSection("ApplicationTables").GetValue<string>("DtsxAttributes");
-            var sqlString = $@"IF OBJECT_ID(N'{tableName}', N'U') IS NOT NULL     PRINT 0	ELSE PRINT 1;";
-            if (string.IsNullOrEmpty(_connectionString))
-            {
-                _logger.LogCritical($@"CheckAttributesTable Error with connection string");
-             }
-            using var connection = new SqlConnection(_connectionString);
-            return await connection.ExecuteAsync(@$"{sqlString}");
-        }
-        catch (Exception e)
-        {
-            _logger.LogInformation($@"CheckAttributesTable Error = {e}");
-            return -1;
-        }
-
-    }
-    public async Task<int> CheckEtlElementsTableAsync()
-    {
-        try
-        {
-
-            var tableName = _configuration.GetSection("ApplicationTables").GetValue<string>("DtsxElements");
+            var tableName = _configuration.GetSection("ApplicationTables").GetValue<string>(table);
             var sqlString = $@"IF OBJECT_ID(N'{tableName}', N'U') IS NOT NULL     PRINT 0	ELSE PRINT 1;";
             using var connection = new SqlConnection(_connectionString);
             return await connection.ExecuteAsync(@$"{sqlString}");
         }
         catch (Exception e)
         {
-            _logger.LogInformation($@"CheckElementsTable Error = {e}");
+            _logger.LogInformation($@"{table} Error = {e}");
             return -1;
         }
 
     }
-    public async Task<int> CheckEtlMapperTableAsync()
-    {
-        try
-        {
 
-            var tableName = _configuration.GetSection("ApplicationTables").GetValue<string>("DtsxMapper");
-            var sqlString = $@"IF OBJECT_ID(N'{tableName}', N'U') IS NOT NULL     PRINT 0	ELSE PRINT 1;";
-            using var connection = new SqlConnection(_connectionString);
-            return await connection.ExecuteAsync(@$"{sqlString}");
-        }
-        catch (Exception e)
-        {
-            _logger.LogInformation($@"CheckElementsTable Error = {e}");
-            return -1;
-        }
 
-    }
-    public async Task<int> CheckEtlVariablesTableAsync()
-    {
-        try
-        {
-
-            var tableName = _configuration.GetSection("ApplicationTables").GetValue<string>("DtsxVariables");
-            var sqlString = $@"IF OBJECT_ID(N'{tableName}', N'U') IS NOT NULL     PRINT 0	ELSE PRINT 1;";
-            using var connection = new SqlConnection(_connectionString);
-            return await connection.ExecuteAsync(@$"{sqlString}");
-        }
-        catch (Exception e)
-        {
-            _logger.LogInformation($@"CheckVariablesTable Error = {e}");
-            return -1;
-        }
-
-    }
-    public async Task  TruncateEtlTablesAllAsync()
-    {
-        try
-        {
-
-            var tableName = _configuration.GetSection("ApplicationTables").GetValue<string>("DtsxMapper");
-            if (tableName != null)
-            {
-                Console.WriteLine($@"Truncating table {tableName}  ");
-                await TruncateEtlTableAsync(tableName);
-                Console.WriteLine($@"Truncate table {tableName} done ");
-            }
-            tableName = _configuration.GetSection("ApplicationTables").GetValue<string>("DtsxElements");
-            if(tableName != null)
-            {
-                Console.WriteLine($@"Truncating table {tableName}  ");
-                await TruncateEtlTableAsync(tableName);
-                Console.WriteLine($@"Truncate table {tableName} done ");
-            }
-
-              tableName = _configuration.GetSection("ApplicationTables").GetValue<string>("DtsxAttributes");
-            if (tableName != null)
-            {
-                Console.WriteLine($@"Truncating table {tableName}  ");
-                await TruncateEtlTableAsync(tableName);
-                Console.WriteLine($@"Truncate table {tableName} done ");
-            }
-              tableName = _configuration.GetSection("ApplicationTables").GetValue<string>("DtsxVariables");
-            if (tableName != null)
-            {
-                Console.WriteLine($@"Truncating table {tableName}  ");
-                await TruncateEtlTableAsync(tableName);
-                Console.WriteLine($@"Truncate table {tableName} done ");
-            }
-        }
-        catch (Exception e)
-        {
-            _logger.LogInformation($@"InsertElementsAsync Error = {e}");
-            throw;
-        }
-
-    }
-    public async Task<int> InsertEtlMapperAsync(IEnumerable<DtsMapper> mapper)
-    {
-        try
-        {
-            var tableName = _configuration.GetSection("ApplicationTables").GetValue<string>("DtsxMapper");
-
-            using (var connection = new SqlConnection(_connectionString))
-            {
-
-                var sql = @$"insert into {tableName} ([Description] ,[Package]  ,[RefId]  ,[SqlStatement]  ,[ConnectionString]  ,[ConnectionName]  ,[ConnectionDtsId]
-      ,[ConnectionType]  ,[ConnectionRefId]  ,[Name]  ,[ComponentType]) VALUES (@Description ,@Package  ,@RefId  ,@SqlStatement  ,@ConnectionString  ,@ConnectionName  ,@ConnectionDtsId
-      ,@ConnectionType  ,@ConnectionRefId  ,@Name  ,@ComponentType)";
-                var rowsAffected = await connection.ExecuteAsync(sql, mapper);
-                return rowsAffected;
-            }
-        }
-        catch (Exception e)
-        {
-            _logger.LogInformation($@"InsertElementsAsync Error = {e}");
-            throw;
-        }
-
-    }
-    public async Task<int> InsertEtlElementsAsync(IEnumerable<DtsElement> elements)
-    {
-        try
-        {
-            var tableName = _configuration.GetSection("ApplicationTables").GetValue<string>("DtsxElements");
-          
-            using (var connection = new SqlConnection(_connectionString))
-            {
-
-                var sql = @$"insert into {tableName}
-                    ([CreationName], [Description], [Filename], [Package], [ParentNodeDtsId], [ParentNodeName], [ParentNodeType], [ParentGUID], [GUID]
-        , [ParentRefId], [RefId], [XPath], [DtsId], [Name], [NodeType], [Value], [XmlType]) VALUES (@CreationName, @Description, @Filename, @Package, @ParentNodeDtsId, @ParentNodeName, @ParentNodeType, @ParentGUID, @GUID
-        , @ParentRefId, @RefId, @XPath, @DtsId, @Name, @NodeType, @Value, @XmlType)";
-                var rowsAffected = await connection.ExecuteAsync(sql, elements);
-                return rowsAffected;
-            }
-        }
-        catch (Exception e)
-        {
-            _logger.LogInformation($@"InsertElementsAsync Error = {e}");
-            throw;
-        }
     
-    }
-    public   async Task<int> InsertEtlAttributesAsync(IEnumerable<DtsAttribute> attributes)
+
+    public async Task<int> InsertEtlAsync<T>(IEnumerable<T> list, string sql) where T : class
     {
         try
         {
-            var tableName = _configuration.GetSection("ApplicationTables").GetValue<string>("DtsxAttributes");
 
- 
             using (var connection = new SqlConnection(_connectionString))
             {
-                try
-                {
-
-                    var sql = @$"insert into {tableName}
-([CreationName],[Description],[Filename],[Package],[ParentNodeDtsId],[ParentNodeName],[ParentNodeType],[ParentGUID], [GUID],[ParentRefId],[RefId],[XPath]
-,[ElementXPath],[AttributeName],[AttributeType],[AttributeValue]) VALUES (@CreationName,@Description,@Filename,@Package,@ParentNodeDtsId,@ParentNodeName,@ParentNodeType,@ParentGUID,@GUID,@ParentRefId,@RefId,@XPath,@ElementXPath,@AttributeName,@AttributeType
-,@AttributeValue)";
-                    var rowsAffected =    await connection.ExecuteAsync(sql, attributes);
-                    if(rowsAffected == 0)
-                    {
-                        Console.WriteLine(  "ZERO");
-                    }
-                    Console.WriteLine("pause");
-                    return rowsAffected;
-                }
-                catch (SqlException ex)
-                {
-                    Console.WriteLine($"Database operation failed: {ex.Message}");
-
-                    throw;
-                }
-
-            }
-        }
-        catch (Exception e)
-        {
-            _logger.LogInformation($@"InsertAttributesAsync Error = {e}");
-            throw;
-        }
-    }
-    public async Task<int> InsertEtlVariablesAsync(IEnumerable<DtsVariable> variables)
-    {
-        try
-        {
-            var tableName = _configuration.GetSection("ApplicationTables").GetValue<string>("DtsxVariables");
- 
-            using (var connection = new SqlConnection(_connectionString))
-            {
-
-                var sql = @$"insert into {tableName}
-([CreationName],[Description],[Filename],[Package],[ParentNodeDtsId],[ParentNodeName],[ParentNodeType],[ParentGUID], [GUID],[ParentRefId],[RefId],[XPath],[EvaluateAsExpression],[IncludeInDebugDump],[VariableDataType]
-,[VariableDtsxId],[VariableExpression],[VariableName],[VariableNameSpace],[VariableValue]) 
-VALUES (@CreationName,@Description,@Filename,@Package,@ParentNodeDtsId,@ParentNodeName,@ParentNodeType,@ParentGUID,@GUID,@ParentRefId,@RefId,@XPath,@EvaluateAsExpression,@IncludeInDebugDump,@VariableDataType,@VariableDtsxId
-,@VariableExpression,@VariableName,@VariableNameSpace,@VariableValue)";
-                var rowsAffected = await connection.ExecuteAsync(sql, variables);
+                var rowsAffected = await connection.ExecuteAsync(sql, list);
                 return rowsAffected;
             }
         }
         catch (Exception e)
         {
-            _logger.LogInformation($@"InsertVariablesAsync Error = {e}");
+            _logger.LogInformation($@"InsertElementsAsync Error = {e}");
             throw;
         }
-       
 
     }
+    
+    
+    
+     
     public async Task<IEnumerable<DtsVariable>> GetEtlVariablesAllAsync()
     {
 
