@@ -59,6 +59,8 @@ public static class Program
         List<DtsVariable>? packageVariables = new List<DtsVariable>();
         List<DtsMapper>? packageDataMapper = new List<DtsMapper>();
 
+
+
         IEnumerable<string> fileList = new List<string>();
         string FileName = string.Empty;
         string? nodeRefid = string.Empty;
@@ -118,7 +120,6 @@ public static class Program
             // Define and load the XML Objects
             if (commandLineService != null && databaseService != null && processingService != null && navigationService != null)
             {
-                await databaseService.TruncateEtlTablesAllAsync();
                 if (!string.IsNullOrEmpty(options.Path))
                 {
 
@@ -156,36 +157,42 @@ public static class Program
                             nodeName = nodeName,
                         };
                         logger.LogInformation(@$"Scanning file: {XmlConfig.FileName} Package {XmlConfig?.PackageName()}");
-                       // xpath = "//pipeline/components/component/properties/property[@name='OpenRowset']";
 
-                        xpath = "//pipeline/components/component/properties/property[@name='OpenRowset' or @name='SqlCommandVariable']";
+                        
                         if (XmlConfig != null)
                         {
+                            xpath = "//pipeline/components/component/properties/property[@name='OpenRowset' or @name='SqlCommandVariable']";
                             var allChildren = nav.Select(xpath, nsmgr);
-                            Console.WriteLine("");
-                           
+
                             XmlConfig.Children = allChildren;
                             logger.LogInformation($@"Running GetFlowDataMapper");
                             packageDataMapper.AddRange(processingService.GetFlowDataMapper(XmlConfig));
-                        }
-                       
-                        // Collect SQL Execute
-                        xpath = "//DTS:Executable/DTS:ObjectData/SQLTask:SqlTaskData";
-                        if (XmlConfig != null)
-                        {
-                            var allChildren = nav.Select(xpath, nsmgr);
+
+                            Console.WriteLine(  "Starting Flat");
+                            xpath = "//pipeline/components/component[@componentClassID='Microsoft.FlatFileDestination']";
+                            allChildren = nav.Select(xpath, nsmgr);
+
+                            XmlConfig.Children = allChildren;
+                            logger.LogInformation($@"Running GetFlowDataMapper");
+                            packageDataMapper.AddRange(processingService.GetFlowDataMapper(XmlConfig));
+
+
+
+                            // Collect SQL Execute
+                            xpath = "//DTS:Executable/DTS:ObjectData/SQLTask:SqlTaskData";
+
+                            allChildren = nav.Select(xpath, nsmgr);
                             XmlConfig.Children = allChildren;
                             logger.LogInformation($@"Running GetSqlExeMapper");
                             packageDataMapper.AddRange(processingService.GetSqlExeMapper(XmlConfig));
-                        } 
+
                             Console.WriteLine("PAUSE");
-                     
-                        // Find Pipeline  SQL
-                        
-                        xpath = "//DTS:Variables/child::*";
-                        if (XmlConfig != null)
-                        {
-                            var allChildren = nav.Select(xpath, nsmgr);
+
+                            // Find Pipeline  SQL
+
+                            xpath = "//DTS:Variables/child::*";
+
+                            allChildren = nav.Select(xpath, nsmgr);
                             XmlConfig.Children = allChildren;
                             logger.LogInformation($@"Running GetVariables");
                             packageVariables.AddRange(processingService.GetVariables(XmlConfig));
@@ -196,7 +203,7 @@ public static class Program
                             xpaths = configuration.GetSection("ScanElements").Get<List<string>>();
                             if (xpaths != null && xpaths.Count >= 1)
                             {
-                                foreach (string x in xpaths)
+                                foreach (var x in xpaths)
                                 {
                                     if (XmlConfig != null)
                                     {
@@ -226,7 +233,7 @@ public static class Program
                         if (packageAttributes != null && packageVariables != null && packageElements != null)
                         {
                             logger.LogInformation(@$"Saving data to database");
-                            await databaseService.SaveEtlToDatabaseAsync(packageElements, packageAttributes, packageVariables, packageDataMapper);
+                            await databaseService.SaveAllEtlToDb(packageElements, packageAttributes, packageVariables, packageDataMapper,true);
                         }
                         else
                         {
