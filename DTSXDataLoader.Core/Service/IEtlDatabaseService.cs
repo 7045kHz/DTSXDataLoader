@@ -12,6 +12,7 @@ namespace DTSXDataLoader.Core.Service
         Task<IEnumerable<DtsElement>> GetEtlElementsAllAsync();
         Task<IEnumerable<DtsAttribute>> GetEtlAttributesAllAsync();
         Task<IEnumerable<DtsVariable>> GetEtlVariablesAllAsync();
+        Task SaveLiteEtlToDb(List<DtsVariable> packageVariables, List<DtsMapper> mapper, bool truncate);
         Task SaveAllEtlToDb(List<DtsElement> packageElements, List<DtsAttribute> packageAttributes, List<DtsVariable> packageVariables, List<DtsMapper> mapper, bool truncate);
 
     }

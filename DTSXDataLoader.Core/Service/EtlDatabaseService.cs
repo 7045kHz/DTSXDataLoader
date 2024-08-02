@@ -32,6 +32,44 @@ public class EtlDatabaseService : IEtlDatabaseService
         _connectionString = _configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
     }
+    public async Task SaveLiteEtlToDb( List<DtsVariable> packageVariables, List<DtsMapper> mapper, bool truncate)
+    {
+
+        if (mapper != null)
+        {
+            _logger.LogInformation($@"Running InsertEtlAsync<DtsMapper>()");
+            var tableName = _configuration.GetSection("ApplicationTables").GetValue<string>("DtsxMapper");
+            if (truncate && !string.IsNullOrEmpty(tableName))
+            {
+                await TruncateEtlTableAsync(tableName);
+            }
+            var sql = @$"insert into {tableName} ([Description] ,[Package]  ,[RefId]  ,[SqlStatement]  ,[ConnectionString]  ,[ConnectionName]  ,[ConnectionDtsId]
+      ,[ConnectionType]  ,[ConnectionRefId]  ,[Name]  ,[ComponentType]) VALUES (@Description ,@Package  ,@RefId  ,@SqlStatement  ,@ConnectionString  ,@ConnectionName  ,@ConnectionDtsId
+      ,@ConnectionType  ,@ConnectionRefId  ,@Name  ,@ComponentType)";
+            var returnCount = await InsertEtlAsync<DtsMapper>(mapper, sql);
+            _logger.LogInformation($@" Writting {returnCount} Mapper");
+        }
+         
+        if (packageVariables != null)
+        {
+            _logger.LogInformation($@"Running InsertEtlAsync<DtsVariable>()");
+            var tableName = _configuration.GetSection("ApplicationTables").GetValue<string>("DtsxVariables");
+            if (truncate && !string.IsNullOrEmpty(tableName))
+            {
+                await TruncateEtlTableAsync(tableName);
+            }
+
+            var sql = @$"insert into {tableName}
+([CreationName],[Description],[Filename],[Package],[ParentNodeDtsId],[ParentNodeName],[ParentNodeType],[ParentGUID], [GUID],[ParentRefId],[RefId],[XPath],[EvaluateAsExpression],[IncludeInDebugDump],[VariableDataType]
+,[VariableDtsxId],[VariableExpression],[VariableName],[VariableNameSpace],[VariableValue]) 
+VALUES (@CreationName,@Description,@Filename,@Package,@ParentNodeDtsId,@ParentNodeName,@ParentNodeType,@ParentGUID,@GUID,@ParentRefId,@RefId,@XPath,@EvaluateAsExpression,@IncludeInDebugDump,@VariableDataType,@VariableDtsxId
+,@VariableExpression,@VariableName,@VariableNameSpace,@VariableValue)";
+            var returnCount = await InsertEtlAsync<DtsVariable>(packageVariables,sql);
+            _logger.LogInformation($@"Writting {returnCount} Variables");
+        }
+         
+
+    }
     public async Task SaveAllEtlToDb(List<DtsElement> packageElements, List<DtsAttribute> packageAttributes, List<DtsVariable> packageVariables, List<DtsMapper> mapper, bool truncate)
     {
 
@@ -78,7 +116,7 @@ public class EtlDatabaseService : IEtlDatabaseService
 ,[VariableDtsxId],[VariableExpression],[VariableName],[VariableNameSpace],[VariableValue]) 
 VALUES (@CreationName,@Description,@Filename,@Package,@ParentNodeDtsId,@ParentNodeName,@ParentNodeType,@ParentGUID,@GUID,@ParentRefId,@RefId,@XPath,@EvaluateAsExpression,@IncludeInDebugDump,@VariableDataType,@VariableDtsxId
 ,@VariableExpression,@VariableName,@VariableNameSpace,@VariableValue)";
-            var returnCount = await InsertEtlAsync<DtsVariable>(packageVariables,sql);
+            var returnCount = await InsertEtlAsync<DtsVariable>(packageVariables, sql);
             _logger.LogInformation($@"Writting {returnCount} Variables");
         }
         if (packageElements != null)
@@ -93,7 +131,7 @@ VALUES (@CreationName,@Description,@Filename,@Package,@ParentNodeDtsId,@ParentNo
                     ([CreationName], [Description], [Filename], [Package], [ParentNodeDtsId], [ParentNodeName], [ParentNodeType], [ParentGUID], [GUID]
         , [ParentRefId], [RefId], [XPath], [DtsId], [Name], [NodeType], [Value], [XmlType]) VALUES (@CreationName, @Description, @Filename, @Package, @ParentNodeDtsId, @ParentNodeName, @ParentNodeType, @ParentGUID, @GUID
         , @ParentRefId, @RefId, @XPath, @DtsId, @Name, @NodeType, @Value, @XmlType)";
-            var returnCount = await InsertEtlAsync<DtsElement>(packageElements,sql);
+            var returnCount = await InsertEtlAsync<DtsElement>(packageElements, sql);
             _logger.LogInformation($@"Writting {returnCount} Elements");
         }
 

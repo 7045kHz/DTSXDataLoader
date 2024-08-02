@@ -135,20 +135,22 @@ public static class Program
 
 
 
-
-                        if (packageAttributes != null && packageAttributes.Count >= 1)
+                        if (!options.IsLite && packageAttributes != null && packageAttributes.Count >= 1)
                         {
-                            if (!string.IsNullOrEmpty(packageAttributes?.Find(a => a.ParentRefId == "Package")?.ParentRefId))
-                            {
-                                nodeRefid = packageAttributes?.Find(a => a.ParentRefId == "Package")?.ParentRefId;
+                             
+                                if (!string.IsNullOrEmpty(packageAttributes?.Find(a => a.ParentRefId == "Package")?.ParentRefId))
+                                {
+                                    nodeRefid = packageAttributes?.Find(a => a.ParentRefId == "Package")?.ParentRefId;
 
-                            }
-                            if (!string.IsNullOrEmpty(packageAttributes?.Find(a => a.ParentNodeName == "DTS:Executable")?.ParentNodeName))
-                            {
-                                nodeName = packageAttributes?.Find(a => a.ParentNodeName == "DTS:Executable")?.ParentNodeName;
+                                }
+                                if (!string.IsNullOrEmpty(packageAttributes?.Find(a => a.ParentNodeName == "DTS:Executable")?.ParentNodeName))
+                                {
+                                    nodeName = packageAttributes?.Find(a => a.ParentNodeName == "DTS:Executable")?.ParentNodeName;
 
-                            }
+                                }
+                       
                         }
+
                         XConfig XmlConfig = new XConfig()
                         {
                             FileName = FileName,
@@ -161,7 +163,7 @@ public static class Program
                         
                         if (XmlConfig != null)
                         {
-                            xpath = "//pipeline/components/component/properties/property[@name='OpenRowset' or @name='SqlCommandVariable']";
+                            xpath = "//pipeline/components/component/properties/property[@name='OpenRowset' or @name='SqlCommandVariable' or @name='SqlCommand' or @name='OpenRowsetVariable']";
                             var allChildren = nav.Select(xpath, nsmgr);
 
                             XmlConfig.Children = allChildren;
@@ -223,22 +225,37 @@ public static class Program
                     }
                     try
                     {
-                        logger.LogInformation($@"Getting Attribute List From Elements");
-                        var elementAttributes = processingService?.GetAttributeListFromElements(packageElements);
-                        if (elementAttributes != null)
+                        Console.WriteLine(  "pause");
+                        if (options.IsLite)
                         {
-                            packageAttributes?.AddRange(elementAttributes);
+                            if (  packageVariables != null && packageDataMapper != null)
+                            {
+                                logger.LogInformation(@$"Saving data to database");
+                                await databaseService.SaveLiteEtlToDb( packageVariables, packageDataMapper, true);
+                            }
+                            else
+                            {
+                                logger.LogError($@"Not all lists available to insert to database");
+                            }
+                        } else
+                        {
+                            logger.LogInformation($@"Getting Attribute List From Elements");
+                            var elementAttributes = processingService?.GetAttributeListFromElements(packageElements);
+                            if (elementAttributes != null)
+                            {
+                                packageAttributes?.AddRange(elementAttributes);
+                            }
+                            if (packageAttributes != null && packageVariables != null && packageElements != null && packageDataMapper != null)
+                            {
+                                logger.LogInformation(@$"Saving data to database");
+                                await databaseService.SaveAllEtlToDb(packageElements, packageAttributes, packageVariables, packageDataMapper, true);
+                            }
+                            else
+                            {
+                                logger.LogError($@"Not all lists available to insert to database");
+                            }
                         }
 
-                        if (packageAttributes != null && packageVariables != null && packageElements != null)
-                        {
-                            logger.LogInformation(@$"Saving data to database");
-                            await databaseService.SaveAllEtlToDb(packageElements, packageAttributes, packageVariables, packageDataMapper,true);
-                        }
-                        else
-                        {
-                            logger.LogError($@"Not all lists available to insert to database");
-                        }
 
 
 
