@@ -1,16 +1,19 @@
 # DTSX DataReader
 Intent is to create a way of mapping DTSX files to SQL for easier mappinmg and C4 Model generation.
+ 
+ **ATTENTION: ALPHA CODE NOT FOR PRODUCTION USAGE**
 
 ## Command Line Execution
 
 ### Example Execution 
 ```bash
 
-.\DTSXDataLoader -p Y:\\GitHub\\SSISDeploy\\ -l -s -v
+.\DTSXDataLoader -p C:\\PATH\\DIRECTORY\\ -l -s -v
 
 ```
 
 ### Options
+Not all options enabled.
 
 ```c-sharp
         [Option('v', "verbose", Required = false, HelpText = "Set output to verbose messages.")]
