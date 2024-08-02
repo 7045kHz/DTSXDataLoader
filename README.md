@@ -1,6 +1,36 @@
 # DTSX DataReader
 Intent is to create a way of mapping DTSX files to SQL for easier mappinmg and C4 Model generation.
 
+## Command Line Execution
+
+### Example Execution 
+```bash
+
+.\DTSXDataLoader -p Y:\\GitHub\\SSISDeploy\\ -l -s -v
+
+```
+
+### Options
+
+```c-sharp
+        [Option('v', "verbose", Required = false, HelpText = "Set output to verbose messages.")]
+        public bool IsVerbose { get; set; } = false;
+
+        [Option('p', "path", Required = false, HelpText = "Path to individual package or directory of packages")]
+        public string? Path { get; set; }
+
+        [Option('s', "sql", Required = false, HelpText = "SQL")]
+        public bool IsSql { get; set; } = false;
+
+        [Option('l', "lite", Required = false, HelpText = "Mapper and Variables Only")]
+        public bool IsLite { get; set; } = false;
+
+        [Option('x', "extension", Required = false, HelpText = "non-dtsx extension")]
+        public string? Extension { get; set; } 
+
+        [Option('o', "Output", Required = false, HelpText = "Output Directory")]
+        public string? OutputDirectory { get; set; }
+```
 ## Initial DB and App settings configuration
 
 ### Appsettings.json
@@ -28,6 +58,7 @@ Intent is to create a way of mapping DTSX files to SQL for easier mappinmg and C
 
 
 ```
+
 ### SQL Table Dependencies
 
 ```sql

@@ -39,6 +39,11 @@ namespace DTSXDataLoader.Service
                             Console.WriteLine($"Directory output enabled. Current Arguments: -v {o.IsVerbose}");
                             returnOptions.IsVerbose = true;
                         }
+                        if (o.IsLite)
+                        {
+                            Console.WriteLine($"Directory output enabled. Current Arguments: -l {o.IsLite}");
+                            returnOptions.IsLite = true;
+                        }
                     });
             return returnOptions;
         }
