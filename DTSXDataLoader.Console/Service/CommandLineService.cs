@@ -63,7 +63,8 @@ namespace DTSXDataLoader.Service
                 FileAttributes attr = File.GetAttributes(options.Path);
                 if (attr.HasFlag(FileAttributes.Directory))
                 {
-                    Console.WriteLine("Its a directory");
+                    Console.WriteLine(@$"Scanning directory {options.Path}");
+                    
                     if (!string.IsNullOrEmpty(options.Extension))
                     {
                         returnList = _fileService.GetAllFilesInDirectory(options.Path, options.Extension);

@@ -79,7 +79,10 @@ public static class Program
                 if (!string.IsNullOrEmpty(options.Path))
                 {
                     FileName = options.Path;
-                    logger.LogInformation(@$"Scanning: {FileName}");
+                    if (options.IsVerbose)
+                    {
+                        logger.LogInformation(@$"Scanning: {FileName}");
+                    }
                 }
             }
             else
@@ -124,8 +127,14 @@ public static class Program
                 {
 
                     fileList = commandLineService.GetArrayOfFilesFromOptions(options);
+                    var total = fileList.Count();
+                    var currentCount = 1;
                     foreach (var file in fileList)
                     {
+
+                        Console.WriteLine($@"Processing {total}/{currentCount} - {FileName}");
+
+
                         FileName = file;
 
 
@@ -133,21 +142,21 @@ public static class Program
                         XPathNavigator nav = navigationService.CreateNavigator(doc);
                         XmlNamespaceManager nsmgr = navigationService.CreateNameSpaceManager(nav.NameTable);
 
- 
+
                         if (!options.IsLite && packageAttributes != null && packageAttributes.Count >= 1)
                         {
-                             
-                                if (!string.IsNullOrEmpty(packageAttributes?.Find(a => a.ParentRefId == "Package")?.ParentRefId))
-                                {
-                                    nodeRefid = packageAttributes?.Find(a => a.ParentRefId == "Package")?.ParentRefId;
 
-                                }
-                                if (!string.IsNullOrEmpty(packageAttributes?.Find(a => a.ParentNodeName == "DTS:Executable")?.ParentNodeName))
-                                {
-                                    nodeName = packageAttributes?.Find(a => a.ParentNodeName == "DTS:Executable")?.ParentNodeName;
+                            if (!string.IsNullOrEmpty(packageAttributes?.Find(a => a.ParentRefId == "Package")?.ParentRefId))
+                            {
+                                nodeRefid = packageAttributes?.Find(a => a.ParentRefId == "Package")?.ParentRefId;
 
-                                }
-                       
+                            }
+                            if (!string.IsNullOrEmpty(packageAttributes?.Find(a => a.ParentNodeName == "DTS:Executable")?.ParentNodeName))
+                            {
+                                nodeName = packageAttributes?.Find(a => a.ParentNodeName == "DTS:Executable")?.ParentNodeName;
+
+                            }
+
                         }
 
                         XConfig XmlConfig = new XConfig()
@@ -157,23 +166,33 @@ public static class Program
                             nodeRefid = nodeRefid,
                             nodeName = nodeName,
                         };
-                        logger.LogInformation(@$"Scanning file: {XmlConfig.FileName} Package {XmlConfig?.PackageName()}");
+                        if (options.IsVerbose)
+                        {
+                            logger.LogInformation(@$"Scanning file: {XmlConfig.FileName} Package {XmlConfig?.PackageName()}");
 
-                        
+                        }
+
+
                         if (XmlConfig != null)
                         {
                             xpath = "//pipeline/components/component/properties/property[@name='OpenRowset' or @name='SqlCommandVariable' or @name='SqlCommand' or @name='OpenRowsetVariable']";
                             var allChildren = nav.Select(xpath, nsmgr);
 
                             XmlConfig.Children = allChildren;
-                            logger.LogInformation($@"Running GetFlowDataMapper");
+                            if (options.IsVerbose)
+                            {
+                                logger.LogInformation($@"Running GetFlowDataMapper");
+                            }
                             packageDataMapper.AddRange(processingService.GetFlowDataMapper(XmlConfig));
 
                             xpath = "//pipeline/components/component[@componentClassID='Microsoft.FlatFileDestination']";
                             allChildren = nav.Select(xpath, nsmgr);
 
                             XmlConfig.Children = allChildren;
-                            logger.LogInformation($@"Running GetFlowDataMapper");
+                            if (options.IsVerbose)
+                            {
+                                logger.LogInformation($@"Running GetFlowDataMapper");
+                            }
                             packageDataMapper.AddRange(processingService.GetFlowDataMapper(XmlConfig));
 
 
@@ -183,17 +202,23 @@ public static class Program
 
                             allChildren = nav.Select(xpath, nsmgr);
                             XmlConfig.Children = allChildren;
-                            logger.LogInformation($@"Running GetSqlExeMapper");
+                            if (options.IsVerbose)
+                            {
+                                logger.LogInformation($@"Running GetSqlExeMapper");
+                            }
                             packageDataMapper.AddRange(processingService.GetSqlExeMapper(XmlConfig));
 
 
-                            // Find Pipeline  SQL
+                            // Find Variables
 
                             xpath = "//DTS:Variables/child::*";
 
                             allChildren = nav.Select(xpath, nsmgr);
                             XmlConfig.Children = allChildren;
-                            logger.LogInformation($@"Running GetVariables");
+                            if (options.IsVerbose)
+                            {
+                                logger.LogInformation($@"Running GetVariables");
+                            }
                             packageVariables.AddRange(processingService.GetVariables(XmlConfig));
                         }
 
@@ -209,7 +234,10 @@ public static class Program
 
                                         var allChildren = nav.Select(x, nsmgr);
                                         XmlConfig.Children = allChildren;
-                                        logger.LogInformation($@"Running GetElements");
+                                        if (options.IsVerbose)
+                                        {
+                                            logger.LogInformation($@"Running GetElements");
+                                        }
                                         elements = processingService.GetElements(XmlConfig);
                                         packageElements.AddRange(elements);
                                     }
@@ -218,22 +246,26 @@ public static class Program
 
                         }
 
-
+                        currentCount++;
                     }
                     try
                     {
                         if (options.IsLite)
                         {
-                            if (  packageVariables != null && packageDataMapper != null)
+                            if (packageVariables != null && packageDataMapper != null)
                             {
-                                logger.LogInformation(@$"Saving data to database");
-                                await databaseService.SaveLiteEtlToDb( packageVariables, packageDataMapper, options.IsTruncate);
+                                if (options.IsVerbose)
+                                {
+                                    logger.LogInformation(@$"Saving data to database");
+                                }
+                                await databaseService.SaveLiteEtlToDb(packageVariables, packageDataMapper, options.IsTruncate);
                             }
                             else
                             {
                                 logger.LogError($@"Not all lists available to insert to database");
                             }
-                        } else
+                        }
+                        else
                         {
                             logger.LogInformation($@"Getting Attribute List From Elements");
                             var elementAttributes = processingService?.GetAttributeListFromElements(packageElements);
@@ -243,7 +275,7 @@ public static class Program
                             }
                             if (packageAttributes != null && packageVariables != null && packageElements != null && packageDataMapper != null)
                             {
-                                logger.LogInformation(@$"Saving data to database");
+                                if (options.IsVerbose) { logger.LogInformation(@$"Saving data to database"); }
                                 await databaseService.SaveAllEtlToDb(packageElements, packageAttributes, packageVariables, packageDataMapper, options.IsTruncate);
                             }
                             else
@@ -275,6 +307,6 @@ public static class Program
             logger.LogInformation($@"Program Error = {e}");
             throw;
         }
-
+        Console.WriteLine("PAUSE");
     }
 }

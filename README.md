@@ -69,7 +69,7 @@ Not all options enabled.
 
 ```sql
 
-CREATE TABLE [SSIS].[DTSX_Attributes](
+CREATE TABLE [ETL].[DTSX_Attributes](
 	[Id] [int] IDENTITY(1,1) NOT NULL PRIMARY KEY,
 	[CreationName] [nvarchar](max) NULL,
 	[Description] [nvarchar](max) NULL,
@@ -92,7 +92,7 @@ CREATE TABLE [SSIS].[DTSX_Attributes](
 
  
 
-CREATE TABLE [SSIS].[DTSX_Elements](
+CREATE TABLE [ETL].[DTSX_Elements](
 	[Id] [int] IDENTITY(1,1) NOT NULL PRIMARY KEY,
 	[CreationName] [nvarchar](max) NULL,
 	[Description] [nvarchar](max) NULL,
@@ -116,7 +116,7 @@ CREATE TABLE [SSIS].[DTSX_Elements](
 
  
 
-CREATE TABLE [SSIS].[DTSX_Mapper](
+CREATE TABLE [ETL].[DTSX_Mapper](
 	[Id] [int] IDENTITY(1,1) NOT NULL PRIMARY KEY,
 	[Description] [nvarchar](max) NULL,
 	[Package] [nvarchar](max) NULL,
@@ -133,7 +133,7 @@ CREATE TABLE [SSIS].[DTSX_Mapper](
 );
  
 
-CREATE TABLE [SSIS].[DTSX_Variables](
+CREATE TABLE [ETL].[DTSX_Variables](
 	[Id] [int] IDENTITY(1,1) NOT NULL PRIMARY KEY,
 	[CreationName] [nvarchar](max) NULL,
 	[Description] [nvarchar](max) NULL,
@@ -185,8 +185,8 @@ SELECT   m.[Id]
       ,m.[Name]
       ,m.[ComponentType]
       ,m.[LoadDate]
-  FROM [PROTO].[SSIS].[DTSX_Mapper] m
-  left join [PROTO].[SSIS].[DTSX_Variables] v on v.Package=m.Package and CONCAT(v.[VariableNameSpace],'::',v.[VariableName]) = m.SqlStatement
+  FROM [PROTO].[ETL].[DTSX_Mapper] m
+  left join [PROTO].[ETL].[DTSX_Variables] v on v.Package=m.Package and CONCAT(v.[VariableNameSpace],'::',v.[VariableName]) = m.SqlStatement
 
 
 ```
