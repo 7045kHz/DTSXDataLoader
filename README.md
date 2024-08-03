@@ -1,7 +1,12 @@
 # DTSX DataReader
-Intent is to create a way of mapping DTSX files to SQL for easier mappinmg and C4 Model generation.
+Intent is to create a way of mapping DTSX (SSIS) files to SQL for easier mappinmg and C4 Model generation.
  
  **ATTENTION: ALPHA CODE NOT FOR PRODUCTION USAGE**
+
+## Example DataMaper output
+Simple example mapping packages, variables and SQL contained withing the SSIS package. TSQL to create view described in the SQL section of the README.md.
+
+ ![alt text](dataMapper.png "View from SQL code below")
 
 ## Command Line Execution
 
