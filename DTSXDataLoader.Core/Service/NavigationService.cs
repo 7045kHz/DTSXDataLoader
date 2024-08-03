@@ -111,7 +111,7 @@ public class NavigationService : INavigationService
         {
             var n = node.Clone();
             if (n.MoveToParent() == false) return 0;
-            return 1 + n.GetLevel();
+            return 1 + GetLevel(n);
         }
         /*
                     'R',    // Root
@@ -255,7 +255,7 @@ public class NavigationService : INavigationService
             }
             else
             {
-                return n.GetPath() + "/" + str;
+                return GetPath(n) + "/" + str;
             }
         }
         public string GetPath(XPathNavigator node, string label)
@@ -280,7 +280,7 @@ public class NavigationService : INavigationService
             }
             else
             {
-                return n.GetPath() + "/" + str;
+                return GetPath(n) + "/" + str;
             }
         }
 

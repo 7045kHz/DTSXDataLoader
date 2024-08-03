@@ -16,6 +16,7 @@ namespace DTSXDataLoader.Core.Service
     {
         private readonly IConfiguration _configuration;
         private readonly ILogger _logger;
+ 
 
         public FileService(IConfiguration configuration, ILogger logger)
         {
@@ -118,6 +119,7 @@ namespace DTSXDataLoader.Core.Service
             if (!string.IsNullOrEmpty(path) && !string.IsNullOrEmpty(extension))
             {
                 var directoryInfo = new DirectoryInfo(path);
+ 
                 return directoryInfo.GetFiles(extension, System.IO.SearchOption.TopDirectoryOnly).Select(i => i.FullName);
             }
             return returnList;
