@@ -133,8 +133,7 @@ public static class Program
                         XPathNavigator nav = navigationService.CreateNavigator(doc);
                         XmlNamespaceManager nsmgr = navigationService.CreateNameSpaceManager(nav.NameTable);
 
-
-
+ 
                         if (!options.IsLite && packageAttributes != null && packageAttributes.Count >= 1)
                         {
                              
@@ -170,7 +169,6 @@ public static class Program
                             logger.LogInformation($@"Running GetFlowDataMapper");
                             packageDataMapper.AddRange(processingService.GetFlowDataMapper(XmlConfig));
 
-                            Console.WriteLine(  "Starting Flat");
                             xpath = "//pipeline/components/component[@componentClassID='Microsoft.FlatFileDestination']";
                             allChildren = nav.Select(xpath, nsmgr);
 
@@ -188,7 +186,6 @@ public static class Program
                             logger.LogInformation($@"Running GetSqlExeMapper");
                             packageDataMapper.AddRange(processingService.GetSqlExeMapper(XmlConfig));
 
-                            Console.WriteLine("PAUSE");
 
                             // Find Pipeline  SQL
 
@@ -225,13 +222,12 @@ public static class Program
                     }
                     try
                     {
-                        Console.WriteLine(  "pause");
                         if (options.IsLite)
                         {
                             if (  packageVariables != null && packageDataMapper != null)
                             {
                                 logger.LogInformation(@$"Saving data to database");
-                                await databaseService.SaveLiteEtlToDb( packageVariables, packageDataMapper, true);
+                                await databaseService.SaveLiteEtlToDb( packageVariables, packageDataMapper, options.IsTruncate);
                             }
                             else
                             {
@@ -248,7 +244,7 @@ public static class Program
                             if (packageAttributes != null && packageVariables != null && packageElements != null && packageDataMapper != null)
                             {
                                 logger.LogInformation(@$"Saving data to database");
-                                await databaseService.SaveAllEtlToDb(packageElements, packageAttributes, packageVariables, packageDataMapper, true);
+                                await databaseService.SaveAllEtlToDb(packageElements, packageAttributes, packageVariables, packageDataMapper, options.IsTruncate);
                             }
                             else
                             {

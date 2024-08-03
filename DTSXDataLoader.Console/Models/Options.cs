@@ -19,6 +19,8 @@ namespace DTSXDataLoader.Models
         public bool IsSql { get; set; } = false;
         [Option('l', "lite", Required = false, HelpText = "Mapper and Variables Only")]
         public bool IsLite { get; set; } = false;
+        [Option('t', "truncate", Required = false, HelpText = "Truncate destination tables first")]
+        public bool IsTruncate { get; set; } = false;
 
         [Option('x', "extension", Required = false, HelpText = "non-dtsx extension")]
         public string? Extension { get; set; } 

@@ -16,6 +16,10 @@ namespace DTSXDataLoader.Models
         {
             get; set;
         }
+        bool IsTruncate
+        {
+            get; set;
+        }
         string? OutputDirectory
         {
             get; set;

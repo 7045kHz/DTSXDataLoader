@@ -21,6 +21,92 @@ public class NavigationService : INavigationService
         {
             _logger = logger;
         }
+        private readonly char[] NodeTypeLetter = new char[] {
+            'R',    // Root
+            'E',    // Element
+            'A',    // Attribute
+            'N',    // Namespace
+            'T',    // Text
+            'S',    // SignificantWhitespace
+            'W',    // Whitespace
+            'P',    // ProcessingInstruction
+            'C',    // Comment
+            'X',    // All
+        };
+        private readonly char[] UniqueIdTbl = new char[] {
+            'A',  'B',  'C',  'D',  'E',  'F',  'G',  'H',  'I',  'J',
+            'K',  'L',  'M',  'N',  'O',  'P',  'Q',  'R',  'S',  'T',
+            'U',  'V',  'W',  'X',  'Y',  'Z',  '1',  '2',  '3',  '4',
+            '5',  '6'
+        };
+        private uint IndexInParent(XPathNavigator node)
+        {
+            
+                XPathNavigator nav = node.Clone();
+                uint idx = 0;
+
+                switch (node.NodeType)
+                {
+                    case XPathNodeType.Attribute:
+                        while (nav.MoveToNextAttribute())
+                        {
+                            idx++;
+                        }
+                        break;
+                    case XPathNodeType.Namespace:
+                        while (nav.MoveToNextNamespace())
+                        {
+                            idx++;
+                        }
+                        break;
+                    default:
+                        while (nav.MoveToNext())
+                        {
+                            idx++;
+                        }
+                        break;
+                }
+                return idx;
+            
+        }
+
+        public string NewGUID(XPathNavigator node)
+        {
+            
+
+                XPathNavigator nav = node.Clone();
+                StringBuilder sb = new StringBuilder();
+
+                // Ensure distinguishing attributes, namespaces and child nodes
+                sb.Append(NodeTypeLetter[(int)nav.NodeType]);
+
+                while (true)
+                {
+                    uint idx = IndexInParent(node);
+                    if (!nav.MoveToParent())
+                    {
+                        break;
+                    }
+                    if (idx <= 0x1f)
+                    {
+                        sb.Append(UniqueIdTbl[idx]);
+                    }
+                    else
+                    {
+                        sb.Append('0');
+                        do
+                        {
+                            sb.Append(UniqueIdTbl[idx & 0x1f]);
+                            idx >>= 5;
+                        } while (idx != 0);
+                        sb.Append('0');
+                    }
+                }
+    
+                return sb.ToString();
+             
+
+        }
         private   int GetLevel(  XPathNavigator node)
         {
             var n = node.Clone();
@@ -39,7 +125,7 @@ public class NavigationService : INavigationService
                     'C',    // Comment
         */
 
-        public   string NewGUID(XPathNavigator node)
+        private   string NewGUID2(XPathNavigator node)
         {
             var n1 = node.Clone();
             char prefixGUID;
