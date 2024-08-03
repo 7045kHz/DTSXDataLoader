@@ -4,6 +4,7 @@ using System.Text;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using DTSXDataLoader.Core.Service;
+using System.Xml.Linq;
 
 namespace DTSXDataLoader.Service
 {
@@ -39,6 +40,7 @@ namespace DTSXDataLoader.Service
                     NodeVariableValueClone.MoveToChild("VariableValue", NodeFirstClone.NamespaceURI);
 
                     variable.ParentNodeType = NodeParentClone.NodeType.ToString();
+                    variable.ParentGUID = _navigationService.NewGUID(NodeParentClone);
                     variable.ParentRefId = NodeParentClone.GetAttribute("refId", NodeParentClone.NamespaceURI)?.ToString();
                     variable.ParentNodeDtsId = NodeParentClone.GetAttribute("DTSID", NodeParentClone.NamespaceURI);
                     variable.GUID = _navigationService.NewGUID(NodeFirstClone);
@@ -113,6 +115,7 @@ namespace DTSXDataLoader.Service
 
                         foreach (XPathNavigator x in allChildren)
                         {
+
                             DtsMapper dataMapp = new DtsMapper();
                             dataMapp.Package = config.PackageName();
                             dataMapp.ConnectionDtsId = x?.GetAttribute("Connection", x.NamespaceURI);
@@ -210,8 +213,7 @@ namespace DTSXDataLoader.Service
                                             {
                                                 dataMapp.ConnectionString = cm.GetAttribute("ConnectionString", c.NamespaceURI);
                                             }
-                                            
-                                            Console.WriteLine("pause");
+
                                         }
                                     }
                                 }
@@ -228,7 +230,6 @@ namespace DTSXDataLoader.Service
                                         if (d != null && d.MoveToParent())
                                         {
                                             dataMapp.ComponentType = d.GetAttribute("componentClassID", d.NamespaceURI);
-                                            Console.WriteLine("pause");
                                         }
                                         xpath = "../../connections/connection";
 

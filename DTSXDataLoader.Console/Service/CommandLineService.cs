@@ -44,6 +44,11 @@ namespace DTSXDataLoader.Service
                             Console.WriteLine($"Directory output enabled. Current Arguments: -l {o.IsLite}");
                             returnOptions.IsLite = true;
                         }
+                        if (o.IsTruncate)
+                        {
+                            Console.WriteLine($"Directory output enabled. Current Arguments: -t {o.IsTruncate}");
+                            returnOptions.IsTruncate = true;
+                        }
                     });
             return returnOptions;
         }

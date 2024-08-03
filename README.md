@@ -8,7 +8,7 @@ Intent is to create a way of mapping DTSX files to SQL for easier mappinmg and C
 ### Example Execution 
 ```bash
 
-.\DTSXDataLoader -p C:\\PATH\\DIRECTORY\\ -l -s -v
+.\DTSXDataLoader -p C:\\PATH\\DIRECTORY\\ -l -s -v -t
 
 ```
 
@@ -27,6 +27,9 @@ Not all options enabled.
 
         [Option('l', "lite", Required = false, HelpText = "Mapper and Variables Only")]
         public bool IsLite { get; set; } = false;
+
+		[Option('t', "truncate", Required = false, HelpText = "Truncates all destination tables first")]
+        public bool IsTruncate { get; set; } = false;
 
         [Option('x', "extension", Required = false, HelpText = "non-dtsx extension")]
         public string? Extension { get; set; } 
@@ -75,8 +78,8 @@ CREATE TABLE [SSIS].[DTSX_Attributes](
 	[ParentNodeDtsId] [nvarchar](max) NULL,
 	[ParentNodeName] [nvarchar](max) NULL,
 	[ParentNodeType] [nvarchar](max) NULL,
-	[ParentGUID] [nvarchar](max) NULL,
-	[GUID] [nvarchar](max) NULL,
+	[ParentGUID] [nvarchar](250) NULL,
+	[GUID] [nvarchar](250) NULL,
 	[ParentRefId] [nvarchar](max) NULL,
 	[RefId] [nvarchar](max) NULL,
 	[XPath] [nvarchar](max) NULL,
@@ -98,8 +101,8 @@ CREATE TABLE [SSIS].[DTSX_Elements](
 	[ParentNodeDtsId] [nvarchar](max) NULL,
 	[ParentNodeName] [nvarchar](max) NULL,
 	[ParentNodeType] [nvarchar](max) NULL,
-	[ParentGUID] [nvarchar](max) NULL,
-	[GUID] [nvarchar](max) NULL,
+	[ParentGUID] [nvarchar](250) NULL,
+	[GUID] [nvarchar](250) NULL,
 	[ParentRefId] [nvarchar](max) NULL,
 	[RefId] [nvarchar](max) NULL,
 	[XPath] [nvarchar](max) NULL,
@@ -139,8 +142,8 @@ CREATE TABLE [SSIS].[DTSX_Variables](
 	[ParentNodeDtsId] [nvarchar](max) NULL,
 	[ParentNodeName] [nvarchar](max) NULL,
 	[ParentNodeType] [nvarchar](max) NULL,
-	[ParentGUID] [nvarchar](max) NULL,
-	[GUID] [nvarchar](max) NULL,
+	[ParentGUID] [nvarchar](250) NULL,
+	[GUID] [nvarchar](250) NULL,
 	[ParentRefId] [nvarchar](max) NULL,
 	[RefId] [nvarchar](max) NULL,
 	[XPath] [nvarchar](max) NULL,
@@ -155,6 +158,35 @@ CREATE TABLE [SSIS].[DTSX_Variables](
 	[LoadDate] [datetime] NOT NULL DEFAULT CURRENT_TIMESTAMP,
 );
 
+
+/*
+  Listing Maps with Pipelines and resolved variables
+
+*/
+SELECT   m.[Id]
+      ,m.[Description]
+      ,m.[Package]
+      ,m.[RefId]
+	  ,'Pipeline' =   CASE
+		  WHEN SUBSTRING(m.[RefId], 1, LEN(m.[RefId]) - CHARINDEX('\', REVERSE(m.[RefId]))) = 'Package' THEN m.[RefId]
+		  ELSE SUBSTRING(m.[RefId], 1, LEN(m.[RefId]) - CHARINDEX('\', REVERSE(m.[RefId]))) 
+		  END
+
+      ,'SQL Source' = m.[SqlStatement]
+	  ,'Resolved SQL' = CASE 
+		  WHEN v.VariableValue  IS NULL THEN m.SqlStatement
+		  ELSE v.VariableValue
+		  END
+      ,m.[ConnectionString]
+      ,m.[ConnectionName]
+      ,m.[ConnectionDtsId]
+      ,m.[ConnectionType]
+      ,m.[ConnectionRefId]
+      ,m.[Name]
+      ,m.[ComponentType]
+      ,m.[LoadDate]
+  FROM [PROTO].[SSIS].[DTSX_Mapper] m
+  left join [PROTO].[SSIS].[DTSX_Variables] v on v.Package=m.Package and CONCAT(v.[VariableNameSpace],'::',v.[VariableName]) = m.SqlStatement
 
 
 ```
