@@ -10,7 +10,6 @@ namespace DTSXDataLoader.Core.Service
         public XmlNamespaceManager CreateNameSpaceManager(XmlNameTable NameTable);
         public string GetPath(XPathNavigator node);
         public string GetPath(XPathNavigator node, string label);
-        public string NewGUID(XPathNavigator node);
-        public string NewGUID(XPathNavigator node, string label);
+        public string GetUniqueId(XPathNavigator node);
     }
 }

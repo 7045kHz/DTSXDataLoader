@@ -60,9 +60,9 @@ public class EtlDatabaseService : IEtlDatabaseService
             }
 
             var sql = @$"insert into {tableName}
-([CreationName],[Description],[Filename],[Package],[ParentNodeDtsId],[ParentNodeName],[ParentNodeType],[ParentGUID], [GUID],[ParentRefId],[RefId],[XPath],[EvaluateAsExpression],[IncludeInDebugDump],[VariableDataType]
+([CreationName],[Description],[Filename],[Package],[ParentNodeDtsId],[ParentNodeName],[ParentNodeType],[ParentUniqueId], [UniqueId],[ParentRefId],[RefId],[XPath],[EvaluateAsExpression],[IncludeInDebugDump],[VariableDataType]
 ,[VariableDtsxId],[VariableExpression],[VariableName],[VariableNameSpace],[VariableValue]) 
-VALUES (@CreationName,@Description,@Filename,@Package,@ParentNodeDtsId,@ParentNodeName,@ParentNodeType,@ParentGUID,@GUID,@ParentRefId,@RefId,@XPath,@EvaluateAsExpression,@IncludeInDebugDump,@VariableDataType,@VariableDtsxId
+VALUES (@CreationName,@Description,@Filename,@Package,@ParentNodeDtsId,@ParentNodeName,@ParentNodeType,@ParentUniqueId,@UniqueId,@ParentRefId,@RefId,@XPath,@EvaluateAsExpression,@IncludeInDebugDump,@VariableDataType,@VariableDtsxId
 ,@VariableExpression,@VariableName,@VariableNameSpace,@VariableValue)";
             var returnCount = await InsertEtlAsync<DtsVariable>(packageVariables,sql);
             _logger.LogInformation($@"Writting {returnCount} Variables");
@@ -96,8 +96,8 @@ VALUES (@CreationName,@Description,@Filename,@Package,@ParentNodeDtsId,@ParentNo
                 await TruncateEtlTableAsync(tableName);
             }
             var sql = @$"insert into {tableName}
-([CreationName],[Description],[Filename],[Package],[ParentNodeDtsId],[ParentNodeName],[ParentNodeType],[ParentGUID], [GUID],[ParentRefId],[RefId],[XPath]
-,[ElementXPath],[AttributeName],[AttributeType],[AttributeValue]) VALUES (@CreationName,@Description,@Filename,@Package,@ParentNodeDtsId,@ParentNodeName,@ParentNodeType,@ParentGUID,@GUID,@ParentRefId,@RefId,@XPath,@ElementXPath,@AttributeName,@AttributeType
+([CreationName],[Description],[Filename],[Package],[ParentNodeDtsId],[ParentNodeName],[ParentNodeType],[ParentUniqueId], [UniqueId],[ParentRefId],[RefId],[XPath]
+,[ElementXPath],[AttributeName],[AttributeType],[AttributeValue]) VALUES (@CreationName,@Description,@Filename,@Package,@ParentNodeDtsId,@ParentNodeName,@ParentNodeType,@ParentUniqueId,@UniqueId,@ParentRefId,@RefId,@XPath,@ElementXPath,@AttributeName,@AttributeType
 ,@AttributeValue)";
             var returnCount = await InsertEtlAsync<DtsAttribute>(packageAttributes, sql);
             _logger.LogInformation($@" Writting {returnCount} attributes");
@@ -112,9 +112,9 @@ VALUES (@CreationName,@Description,@Filename,@Package,@ParentNodeDtsId,@ParentNo
             }
 
             var sql = @$"insert into {tableName}
-([CreationName],[Description],[Filename],[Package],[ParentNodeDtsId],[ParentNodeName],[ParentNodeType],[ParentGUID], [GUID],[ParentRefId],[RefId],[XPath],[EvaluateAsExpression],[IncludeInDebugDump],[VariableDataType]
+([CreationName],[Description],[Filename],[Package],[ParentNodeDtsId],[ParentNodeName],[ParentNodeType],[ParentUniqueId], [UniqueId],[ParentRefId],[RefId],[XPath],[EvaluateAsExpression],[IncludeInDebugDump],[VariableDataType]
 ,[VariableDtsxId],[VariableExpression],[VariableName],[VariableNameSpace],[VariableValue]) 
-VALUES (@CreationName,@Description,@Filename,@Package,@ParentNodeDtsId,@ParentNodeName,@ParentNodeType,@ParentGUID,@GUID,@ParentRefId,@RefId,@XPath,@EvaluateAsExpression,@IncludeInDebugDump,@VariableDataType,@VariableDtsxId
+VALUES (@CreationName,@Description,@Filename,@Package,@ParentNodeDtsId,@ParentNodeName,@ParentNodeType,@ParentUniqueId,@UniqueId,@ParentRefId,@RefId,@XPath,@EvaluateAsExpression,@IncludeInDebugDump,@VariableDataType,@VariableDtsxId
 ,@VariableExpression,@VariableName,@VariableNameSpace,@VariableValue)";
             var returnCount = await InsertEtlAsync<DtsVariable>(packageVariables, sql);
             _logger.LogInformation($@"Writting {returnCount} Variables");
@@ -128,8 +128,8 @@ VALUES (@CreationName,@Description,@Filename,@Package,@ParentNodeDtsId,@ParentNo
                 await TruncateEtlTableAsync(tableName);
             }
             var sql = @$"insert into {tableName}
-                    ([CreationName], [Description], [Filename], [Package], [ParentNodeDtsId], [ParentNodeName], [ParentNodeType], [ParentGUID], [GUID]
-        , [ParentRefId], [RefId], [XPath], [DtsId], [Name], [NodeType], [Value], [XmlType]) VALUES (@CreationName, @Description, @Filename, @Package, @ParentNodeDtsId, @ParentNodeName, @ParentNodeType, @ParentGUID, @GUID
+                    ([CreationName], [Description], [Filename], [Package], [ParentNodeDtsId], [ParentNodeName], [ParentNodeType], [ParentUniqueId], [UniqueId]
+        , [ParentRefId], [RefId], [XPath], [DtsId], [Name], [NodeType], [Value], [XmlType]) VALUES (@CreationName, @Description, @Filename, @Package, @ParentNodeDtsId, @ParentNodeName, @ParentNodeType, @ParentUniqueId, @UniqueId
         , @ParentRefId, @RefId, @XPath, @DtsId, @Name, @NodeType, @Value, @XmlType)";
             var returnCount = await InsertEtlAsync<DtsElement>(packageElements, sql);
             _logger.LogInformation($@"Writting {returnCount} Elements");
@@ -233,7 +233,7 @@ VALUES (@CreationName,@Description,@Filename,@Package,@ParentNodeDtsId,@ParentNo
                 var tableName = _configuration.GetSection("ApplicationTables").GetValue<string>("DtsxVariables");
 
                 var sql = @$"SELECT 
-[Id],[CreationName],[Description],[Filename],[Package],[ParentNodeDtsId],[ParentNodeName],[ParentNodeType],[ParentGUID], [GUID],[ParentRefId],[RefId],[XPath],[EvaluateAsExpression],[IncludeInDebugDump],[VariableDataType]
+[Id],[CreationName],[Description],[Filename],[Package],[ParentNodeDtsId],[ParentNodeName],[ParentNodeType],[ParentUniqueId], [UniqueId],[ParentRefId],[RefId],[XPath],[EvaluateAsExpression],[IncludeInDebugDump],[VariableDataType]
 ,[VariableDtsxId],[VariableExpression],[VariableName],[VariableNameSpace],[VariableValue],[LoadDate]) 
 FROM {tableName} ";
                 variables = await connection.QueryAsync<DtsVariable>(sql);
@@ -259,7 +259,7 @@ FROM {tableName} ";
                 var tableName = _configuration.GetSection("ApplicationTables").GetValue<string>("DtsxVariables");
 
                 var sql = @$"SELECT 
-[Id],[CreationName],[Description],[Filename],[Package],[ParentNodeDtsId],[ParentNodeName],[ParentNodeType],[ParentGUID], [GUID],[ParentRefId],[RefId],[XPath]
+[Id],[CreationName],[Description],[Filename],[Package],[ParentNodeDtsId],[ParentNodeName],[ParentNodeType],[ParentUniqueId], [UniqueId],[ParentRefId],[RefId],[XPath]
 ,[ElementXPath],[AttributeName],[AttributeType],[AttributeValue],[LoadDate]) 
 FROM {tableName} ";
                 attributes = await connection.QueryAsync<DtsAttribute>(sql);
@@ -284,7 +284,7 @@ FROM {tableName} ";
                 var tableName = _configuration.GetSection("ApplicationTables").GetValue<string>("DtsxVariables");
 
                 var sql = @$"SELECT 
-[Id],[CreationName], [Description], [Filename], [Package], [ParentNodeDtsId], [ParentNodeName], [ParentNodeType], [ParentGUID], [GUID], [ParentRefId], [RefId], [XPath], [DtsId], [Name], [NodeType], [Value], [XmlType], [LoadDate]) 
+[Id],[CreationName], [Description], [Filename], [Package], [ParentNodeDtsId], [ParentNodeName], [ParentNodeType], [ParentUniqueId], [UniqueId], [ParentRefId], [RefId], [XPath], [DtsId], [Name], [NodeType], [Value], [XmlType], [LoadDate]) 
 FROM {tableName} ";
                 elements = await connection.QueryAsync<DtsElement>(sql);
                 return elements;

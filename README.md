@@ -1,10 +1,10 @@
 # DTSX DataReader
-Intent is to create a way of mapping DTSX (SSIS) files to SQL for easier mappinmg and C4 Model generation.
+Intent is to extract key DTSX (SSIS) elements and attributes from source files and insert them into MSSQL tables for data mining, transparency, and compliance initiatives.
  
  **ATTENTION: ALPHA CODE NOT FOR PRODUCTION USAGE**
 
 ## Example DataMaper output
-Simple example mapping packages, variables and SQL contained withing the SSIS package. TSQL to create view described in the SQL section of the README.md.
+Simple example mapping packages, variables and SQL contained withing the SSIS package. TSQL to create view described in [SQL_Examples.md](SQL_Examples.md)
 
  ![alt text](dataMapper.png "View from SQL code below")
 
@@ -44,6 +44,7 @@ Not all options enabled.
 ```
 ## Initial DB and App settings configuration
 
+To change the default location of SSIS packages, Database Connection, and Dtsx tables, update the appsettings.json file.
 ### Appsettings.json
 
 ```json
@@ -72,6 +73,8 @@ Not all options enabled.
 
 ### SQL Table Dependencies
 
+Changing Names and Scheme is allowed, however you will need to update the appsettings.json configuration file too.
+
 ```sql
 
 CREATE TABLE [ETL].[DTSX_Attributes](
@@ -83,8 +86,8 @@ CREATE TABLE [ETL].[DTSX_Attributes](
 	[ParentNodeDtsId] [nvarchar](max) NULL,
 	[ParentNodeName] [nvarchar](max) NULL,
 	[ParentNodeType] [nvarchar](max) NULL,
-	[ParentGUID] [nvarchar](250) NULL,
-	[GUID] [nvarchar](250) NULL,
+	[ParentUniqueId] [nvarchar](250) NULL,
+	[UniqueId] [nvarchar](250) NULL,
 	[ParentRefId] [nvarchar](max) NULL,
 	[RefId] [nvarchar](max) NULL,
 	[XPath] [nvarchar](max) NULL,
@@ -106,8 +109,8 @@ CREATE TABLE [ETL].[DTSX_Elements](
 	[ParentNodeDtsId] [nvarchar](max) NULL,
 	[ParentNodeName] [nvarchar](max) NULL,
 	[ParentNodeType] [nvarchar](max) NULL,
-	[ParentGUID] [nvarchar](250) NULL,
-	[GUID] [nvarchar](250) NULL,
+	[ParentUniqueId] [nvarchar](250) NULL,
+	[UniqueId] [nvarchar](250) NULL,
 	[ParentRefId] [nvarchar](max) NULL,
 	[RefId] [nvarchar](max) NULL,
 	[XPath] [nvarchar](max) NULL,
@@ -147,8 +150,8 @@ CREATE TABLE [ETL].[DTSX_Variables](
 	[ParentNodeDtsId] [nvarchar](max) NULL,
 	[ParentNodeName] [nvarchar](max) NULL,
 	[ParentNodeType] [nvarchar](max) NULL,
-	[ParentGUID] [nvarchar](250) NULL,
-	[GUID] [nvarchar](250) NULL,
+	[ParentUniqueId] [nvarchar](250) NULL,
+	[UniqueId] [nvarchar](250) NULL,
 	[ParentRefId] [nvarchar](max) NULL,
 	[RefId] [nvarchar](max) NULL,
 	[XPath] [nvarchar](max) NULL,
@@ -162,36 +165,5 @@ CREATE TABLE [ETL].[DTSX_Variables](
 	[VariableValue] [nvarchar](max) NULL,
 	[LoadDate] [datetime] NOT NULL DEFAULT CURRENT_TIMESTAMP,
 );
-
-
-/*
-  Listing Maps with Pipelines and resolved variables
-
-*/
-SELECT   m.[Id]
-      ,m.[Description]
-      ,m.[Package]
-      ,m.[RefId]
-	  ,'Pipeline' =   CASE
-		  WHEN SUBSTRING(m.[RefId], 1, LEN(m.[RefId]) - CHARINDEX('\', REVERSE(m.[RefId]))) = 'Package' THEN m.[RefId]
-		  ELSE SUBSTRING(m.[RefId], 1, LEN(m.[RefId]) - CHARINDEX('\', REVERSE(m.[RefId]))) 
-		  END
-
-      ,'SQL Source' = m.[SqlStatement]
-	  ,'Resolved SQL' = CASE 
-		  WHEN v.VariableValue  IS NULL THEN m.SqlStatement
-		  ELSE v.VariableValue
-		  END
-      ,m.[ConnectionString]
-      ,m.[ConnectionName]
-      ,m.[ConnectionDtsId]
-      ,m.[ConnectionType]
-      ,m.[ConnectionRefId]
-      ,m.[Name]
-      ,m.[ComponentType]
-      ,m.[LoadDate]
-  FROM [PROTO].[ETL].[DTSX_Mapper] m
-  left join [PROTO].[ETL].[DTSX_Variables] v on v.Package=m.Package and CONCAT(v.[VariableNameSpace],'::',v.[VariableName]) = m.SqlStatement
-
 
 ```

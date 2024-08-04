@@ -9,9 +9,9 @@
         string? ParentNodeDtsId { get; set; }
         string? ParentNodeName { get; set; }
         string? ParentNodeType { get; set; }
-        string? ParentGUID { get; set; }
+        string? ParentUniqueId { get; set; }
         string? ParentRefId { get; set; }
-        string? GUID { get; set; }
+        string? UniqueId { get; set; }
         string? RefId { get; set; }
         string? XPath { get; set; }
     }
