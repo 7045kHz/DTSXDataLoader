@@ -8,6 +8,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using DTSXDataLoader.Models;
 using System.Collections.Generic;
+using System.Xml.Linq;
+using System.IO;
 namespace DTSXDataLoader;
 
 public static class Program
@@ -70,6 +72,7 @@ public static class Program
         List<string>? xpaths;
 
         IOptions options = new Options();
+        XPathNodeIterator allChildren;
 
         try
         {
@@ -134,49 +137,57 @@ public static class Program
 
                         Console.WriteLine($@"Processing {total}/{currentCount} - {FileName}");
 
-
                         FileName = file;
-
 
                         XmlDocument doc = navigationService.NewXmlDocument(FileName);
                         XPathNavigator nav = navigationService.CreateNavigator(doc);
                         XmlNamespaceManager nsmgr = navigationService.CreateNameSpaceManager(nav.NameTable);
 
-
-                        if (!options.IsLite && packageAttributes != null && packageAttributes.Count >= 1)
-                        {
-
-                            if (!string.IsNullOrEmpty(packageAttributes?.Find(a => a.ParentRefId == "Package")?.ParentRefId))
-                            {
-                                nodeRefid = packageAttributes?.Find(a => a.ParentRefId == "Package")?.ParentRefId;
-
-                            }
-                            if (!string.IsNullOrEmpty(packageAttributes?.Find(a => a.ParentNodeName == "DTS:Executable")?.ParentNodeName))
-                            {
-                                nodeName = packageAttributes?.Find(a => a.ParentNodeName == "DTS:Executable")?.ParentNodeName;
-
-                            }
-
-                        }
-
+                        // Bootstrap XmlConfig
                         XConfig XmlConfig = new XConfig()
                         {
                             FileName = FileName,
                             nsmgr = nsmgr,
                             nodeRefid = nodeRefid,
                             nodeName = nodeName,
+                            
                         };
-                        if (options.IsVerbose)
+
+                        // Get Document Root Attributes and finish XmlConfig configuration
+                        xpath = "/DTS:Executable";
+                        allChildren = nav.Select(xpath, nsmgr);
+                        XmlConfig.Children = allChildren;
+
+                        packageAttributes = processingService?.GetElements(XmlConfig)?.FirstOrDefault()?.Attributes;
+                        if (packageAttributes != null)
                         {
-                            logger.LogInformation(@$"Scanning file: {XmlConfig.FileName} Package {XmlConfig?.PackageName()}");
+
+                            if (!string.IsNullOrEmpty(packageAttributes?.Find(a => a.ParentRefId == "Package")?.ParentRefId))
+                            {
+                                nodeRefid = packageAttributes?.Find(a => a.ParentRefId == "Package")?.ParentRefId;
+                                XmlConfig.nodeRefid = nodeRefid;
+
+                            }
+                            if (!string.IsNullOrEmpty(packageAttributes?.Find(a => a.ParentNodeName == "DTS:Executable")?.ParentNodeName))
+                            {
+                                nodeName = packageAttributes?.Find(a => a.ParentNodeName == "DTS:Executable")?.ParentNodeName;
+                                XmlConfig.nodeName = nodeName;
+                            }
 
                         }
 
 
+                        if (options.IsVerbose)
+                        {
+                            logger.LogInformation(@$"Scanning file: {XmlConfig.FileName} Package {XmlConfig?.PackageName()}");
+                        }
+
+                        // Process rest of document/SSIS Package
+
                         if (XmlConfig != null)
                         {
                             xpath = "//pipeline/components/component/properties/property[@name='OpenRowset' or @name='SqlCommandVariable' or @name='SqlCommand' or @name='OpenRowsetVariable']";
-                            var allChildren = nav.Select(xpath, nsmgr);
+                            allChildren = nav.Select(xpath, nsmgr);
 
                             XmlConfig.Children = allChildren;
                             if (options.IsVerbose)
@@ -222,6 +233,10 @@ public static class Program
                             packageVariables.AddRange(processingService.GetVariables(XmlConfig));
                         }
 
+
+                        // Custom Scan Elements - default is set in appsettings.json and has a value of "//*"
+                        // To reduce dataset sizes you can customize the XPath for Nodes in appsettings.json by changing that value.
+
                         if (configuration != null && configuration.GetSection("ScanElements").GetChildren().Any())
                         {
                             xpaths = configuration.GetSection("ScanElements").Get<List<string>>();
@@ -232,14 +247,18 @@ public static class Program
                                     if (XmlConfig != null)
                                     {
 
-                                        var allChildren = nav.Select(x, nsmgr);
+                                         allChildren = nav.Select(x, nsmgr);
                                         XmlConfig.Children = allChildren;
                                         if (options.IsVerbose)
                                         {
-                                            logger.LogInformation($@"Running GetElements");
+                                            logger.LogInformation($@"Running GetElements from appsettings.json ScanElements");
                                         }
-                                        elements = processingService.GetElements(XmlConfig);
-                                        packageElements.AddRange(elements);
+                                        elements = processingService?.GetElements(XmlConfig);
+                                        if(elements != null)
+                                        {
+                                            packageElements.AddRange(elements);
+                                        }
+                                        
                                     }
                                 }
                             }
