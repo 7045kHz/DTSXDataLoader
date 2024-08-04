@@ -1,4 +1,4 @@
-# DTSX DataReader
+# DTSX DataLoader
 Intent is to extract key DTSX (SSIS) elements and attributes from source files and insert them into MSSQL tables for data mining, transparency, and compliance initiatives.
  
  **ATTENTION: ALPHA CODE NOT FOR PRODUCTION USAGE**
