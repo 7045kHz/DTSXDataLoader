@@ -75,7 +75,7 @@ namespace DTSXDataLoader.Core.Service
                         var table = _configuration.GetSection("ApplicationTables").GetValue<string>("DtsxAttributes");
                         var sql = @$"insert into {table} (ParentNodeName,ParentNodeXmlType,ParentNodeType,ParentNodeDtsId,Package,Filename,RefId,XPath,CreationName,VariableDtsxId,IncludeInDebugDump";
                         sql = sql + $@",VariableName,VariableNameSpace,VariableValue,VariableDataType,VariableExpression,EvaluateAsExpression) VALUE (";
-                        sql = sql + $@"{variable.ParentNodeName},{variable.ParentGUID},{variable.ParentNodeType},{variable.ParentNodeDtsId},{variable.Package},{variable.Filename},{variable.RefId},{variable.XPath}";
+                        sql = sql + $@"{variable.ParentNodeName},{variable.ParentUniqueId},{variable.ParentNodeType},{variable.ParentNodeDtsId},{variable.Package},{variable.Filename},{variable.RefId},{variable.XPath}";
                         sql = sql + $@",{variable.CreationName},{variable.VariableDtsxId},{variable.IncludeInDebugDump}";
                         sql = sql + $@",{variable.VariableName},{variable.VariableNameSpace},{variable.VariableValue},{variable.VariableDataType},{variable.VariableExpression},{variable.EvaluateAsExpression}";
                         sql = sql + ");";
@@ -131,7 +131,7 @@ namespace DTSXDataLoader.Core.Service
                         var sql = @$"insert into {table} ([CreationName], [Description], [Filename], [Package], [ParentNodeDtsId], [ParentNodeName], [ParentNodeType], [ParentNodeXmlType]
         , [ParentRefId], [RefId], [XPath], [DtsId], [Name], [NodeType], [Value], [XmlType], [LoadDate]) VALUE (";
                         sql = sql + $@"{element.CreationName},{element.Description},{element.Filename},{element.Package},{element.ParentNodeDtsId},{element.ParentNodeName},{element.RefId},{element.ParentNodeType}";
-                        sql = sql + $@",{element.ParentGUID},{element.ParentRefId},{element.RefId}";
+                        sql = sql + $@",{element.ParentUniqueId},{element.ParentRefId},{element.RefId}";
                         sql = sql + $@",{element.RefId},{element.XPath},{element.DtsId},{element.Name},{element.NodeType},{element.Value},{element.XmlType},{DateTime.UtcNow.ToString()}";
                         sql = sql + ");";
 
@@ -168,7 +168,7 @@ namespace DTSXDataLoader.Core.Service
                         {
                             var sql = @$"insert into {table} ([CreationName],[Description],[Filename],[Package],[ParentNodeDtsId],[ParentNodeName],[ParentNodeType],[ParentNodeXmlType],[ParentRefId]
       ,[RefId],[XPath],[ElementXPath],[AttributeName],[AttributeType],[AttributeValue],[LoadDate]) VALUE (";
-                            sql = sql + $@"  {element.CreationName},{element.Description},{element.Filename},{element.Package},{element.ParentNodeDtsId},{element.ParentNodeName},{element.ParentNodeType},{element.ParentGUID}
+                            sql = sql + $@"  {element.CreationName},{element.Description},{element.Filename},{element.Package},{element.ParentNodeDtsId},{element.ParentNodeName},{element.ParentNodeType},{element.ParentUniqueId}
 ,{element.ParentRefId},{element.RefId},{attribute.XPath},{attribute.ElementXPath},{attribute.AttributeName},{attribute.AttributeType},{attribute.AttributeValue},{DateTime.UtcNow.ToString()} );";
 
                             Console.WriteLine($@"{sql}");

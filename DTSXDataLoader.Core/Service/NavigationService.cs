@@ -70,7 +70,7 @@ public class NavigationService : INavigationService
             
         }
 
-        public string NewGUID(XPathNavigator node)
+        public string GetUniqueId(XPathNavigator node)
         {
             
 
@@ -171,51 +171,7 @@ public class NavigationService : INavigationService
 
 
         }
-        public   string NewGUID(XPathNavigator node, string label)
-        {
-            var n1 = node.Clone();
-            char prefixGUID;
-
-            switch (n1.NodeType)
-            {
-                case XPathNodeType.Namespace:
-                    prefixGUID = 'N';
-                    break;
-                case XPathNodeType.Attribute:
-                    prefixGUID = 'A';
-                    break;
-                case XPathNodeType.Element:
-                    prefixGUID = 'E';
-                    break;
-                case XPathNodeType.Root:
-                    prefixGUID = 'R';
-                    break;
-                case XPathNodeType.Text:
-                    prefixGUID = 'T';
-                    break;
-                case XPathNodeType.SignificantWhitespace:
-                    prefixGUID = 'S';
-                    break;
-                case XPathNodeType.Whitespace:
-                    prefixGUID = 'W';
-                    break;
-                case XPathNodeType.ProcessingInstruction:
-                    prefixGUID = 'P';
-                    break;
-                case XPathNodeType.Comment:
-                    prefixGUID = 'C';
-                    break;
-                default:
-                    prefixGUID = 'X';
-                    break;
-            }
-            byte[]? ba = null;
-            ba = Encoding.Default.GetBytes(GetPath(n1, label));
-            var hexString = BitConverter.ToString(ba);
-            return prefixGUID.ToString() + ':' + hexString.Replace("-", "");
-
-
-        }
+        
 
         /// <summary>
         /// GetPath(node) method attempts to derive the full node path to the current node. 

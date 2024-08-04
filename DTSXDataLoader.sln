@@ -9,8 +9,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DTSXDataLoader.Core", "DTSX
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{3DD062CA-1236-47B4-A1B2-E532A706D2F7}"
 	ProjectSection(SolutionItems) = preProject
-		README.md = README.md
 		dataMapper.png = dataMapper.png
+		README.md = README.md
+		SQL_Examples.md = SQL_Examples.md
 	EndProjectSection
 EndProject
 Global

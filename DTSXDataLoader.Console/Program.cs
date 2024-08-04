@@ -307,6 +307,5 @@ public static class Program
             logger.LogInformation($@"Program Error = {e}");
             throw;
         }
-        Console.WriteLine("PAUSE");
     }
 }
